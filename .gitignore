@@ -1,0 +1,29 @@
+# ========================
+# Global / Common
+# ========================
+
+# Node dependencies
+node_modules/
+
+# Environment variables (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Coverage
+coverage/

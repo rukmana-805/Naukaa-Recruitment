@@ -1,0 +1,215 @@
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { PlusIcon, TrashIcon, ArrowLeftIcon } from 'lucide-react';
+import { jobService } from '../../services/job.service';
+import { EMPLOYMENT_TYPES } from '../../utils/constants';
+import { getErrorMessage } from '../../utils/helpers';
+import toast from 'react-hot-toast';
+import { useState } from 'react';
+
+const schema = z.object({
+  title: z.string().min(3, 'Job title is required'),
+  description: z.string().min(20, 'Description must be at least 20 characters'),
+  location: z.string().optional(),
+  employmentType: z.string().optional(),
+  salaryRange: z.object({
+    min: z.coerce.number().optional(),
+    max: z.coerce.number().optional(),
+  }).optional(),
+  experienceRequired: z.object({
+    min: z.coerce.number().optional(),
+    max: z.coerce.number().optional(),
+  }).optional(),
+  skillsRequired: z.string().optional(),
+  expiresAt: z.string().optional(),
+});
+
+const PostJob = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [responsibilities, setResponsibilities] = useState(['']);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      salaryRange: {},
+      experienceRequired: {},
+    },
+  });
+
+  const onSubmit = async (data) => {
+    setLoading(true);
+    try {
+      const payload = {
+        ...data,
+        skillsRequired: data.skillsRequired
+          ? data.skillsRequired.split(',').map((s) => s.trim()).filter(Boolean)
+          : [],
+        responsibilities: responsibilities.filter(Boolean),
+        expiresAt: data.expiresAt || undefined,
+      };
+      const res = await jobService.createJob(payload);
+      toast.success('Job posted successfully!');
+      navigate('/recruiter');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addResponsibility = () => setResponsibilities([...responsibilities, '']);
+  const removeResponsibility = (i) => setResponsibilities(responsibilities.filter((_, idx) => idx !== i));
+  const updateResponsibility = (i, val) => {
+    const arr = [...responsibilities];
+    arr[i] = val;
+    setResponsibilities(arr);
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+        <button onClick={() => navigate(-1)} className="btn-ghost mb-4 -ml-2">
+          <ArrowLeftIcon className="w-4 h-4" />
+          Back
+        </button>
+        <h1 className="section-title">Post a New Job</h1>
+        <p className="text-gray-500 mt-1">Fill in the details to attract the right candidates</p>
+      </motion.div>
+
+      <motion.form
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-5"
+      >
+        {/* Basic Info */}
+        <div className="card p-6 space-y-4">
+          <h2 className="font-semibold text-gray-900">Basic Information</h2>
+
+          <div>
+            <label className="label">Job Title *</label>
+            <input {...register('title')} className="input" placeholder="e.g. Senior Frontend Developer" />
+            {errors.title && <p className="mt-1 text-xs text-red-500">{errors.title.message}</p>}
+          </div>
+
+          <div>
+            <label className="label">Job Description *</label>
+            <textarea {...register('description')} rows={5} className="input resize-none" placeholder="Describe the role, expectations, and ideal candidate..." />
+            {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description.message}</p>}
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Location</label>
+              <input {...register('location')} className="input" placeholder="e.g. Bangalore, Remote" />
+            </div>
+            <div>
+              <label className="label">Employment Type</label>
+              <select {...register('employmentType')} className="input">
+                <option value="">Select type</option>
+                {EMPLOYMENT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Skills Required (comma-separated)</label>
+            <input {...register('skillsRequired')} className="input" placeholder="React, Node.js, TypeScript" />
+          </div>
+        </div>
+
+        {/* Salary & Experience */}
+        <div className="card p-6 space-y-4">
+          <h2 className="font-semibold text-gray-900">Compensation & Experience</h2>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Min Salary (₹/yr)</label>
+              <input {...register('salaryRange.min')} type="number" className="input" placeholder="e.g. 500000" />
+            </div>
+            <div>
+              <label className="label">Max Salary (₹/yr)</label>
+              <input {...register('salaryRange.max')} type="number" className="input" placeholder="e.g. 1200000" />
+            </div>
+            <div>
+              <label className="label">Min Experience (yrs)</label>
+              <input {...register('experienceRequired.min')} type="number" className="input" placeholder="0" />
+            </div>
+            <div>
+              <label className="label">Max Experience (yrs)</label>
+              <input {...register('experienceRequired.max')} type="number" className="input" placeholder="5" />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Application Deadline</label>
+            <input {...register('expiresAt')} type="date" className="input" />
+          </div>
+        </div>
+
+        {/* Responsibilities */}
+        <div className="card p-6 space-y-4">
+          <h2 className="font-semibold text-gray-900">Responsibilities</h2>
+          <div className="space-y-2">
+            {responsibilities.map((r, i) => (
+              <div key={i} className="flex gap-2">
+                <input
+                  type="text"
+                  value={r}
+                  onChange={(e) => updateResponsibility(i, e.target.value)}
+                  className="input flex-1"
+                  placeholder={`Responsibility ${i + 1}`}
+                />
+                {responsibilities.length > 1 && (
+                  <button type="button" onClick={() => removeResponsibility(i)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={addResponsibility} className="btn-ghost text-sm">
+            <PlusIcon className="w-4 h-4" />
+            Add Responsibility
+          </button>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button type="button" onClick={() => navigate(-1)} className="btn-secondary flex-1">
+            Cancel
+          </button>
+          <motion.button
+            type="submit"
+            disabled={loading}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="btn-primary flex-1 justify-center"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Posting...
+              </span>
+            ) : (
+              'Post Job'
+            )}
+          </motion.button>
+        </div>
+      </motion.form>
+    </div>
+  );
+};
+
+export default PostJob;
