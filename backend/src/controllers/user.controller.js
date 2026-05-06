@@ -307,6 +307,59 @@ const updateProfessionalStatus = asyncHandler(async (req, res) => {
 
 const getUserProfile = asyncHandler(async (req, res) => {});
 
+const changePassword = asyncHandler(async (req, res) => {
+
+  const {password, newPassword} = req.body;
+
+  if (!password || !newPassword) {
+    throw new ApiError(400, "Password and new password are required");
+  }
+
+  const user = await UserModel.findById(req.user._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Invalid current password");
+  }
+
+  user.password = newPassword;
+
+  await user.save();
+
+  res.status(200).json(
+    new ApiResponse(200, null, "Password changed successfully")
+  );
+}); 
+
+const saveJob = asyncHandler(async (req, res) => {
+  
+  const jobId = req.params.jobId;
+
+  const user = await UserModel.findById(req.user._id);
+
+  if(!user){
+    throw new ApiError(404, "User not found");
+  }
+
+  if(user.savedJobs.includes(jobId)){
+    throw new ApiError(400, "Job already saved");
+  }
+
+  user.savedJobs.push(jobId);
+
+  await user.save();
+
+  res.status(200).json(
+    new ApiResponse(200, user.savedJobs, "Job saved successfully")
+  );
+
+});
+
 export {
     updatePersonalDetails,
     updateEducation,
@@ -319,5 +372,7 @@ export {
     updateProfileSummary,
     updateProfessionalStatus,
     getUserProfile,
-    uploadResume
+    uploadResume,
+    changePassword,
+    saveJob
 }
