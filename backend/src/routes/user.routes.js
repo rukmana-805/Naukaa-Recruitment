@@ -13,12 +13,16 @@ import {
     updateProfileSummary,
     updateProfessionalStatus,
     updateWorkExperience,
-    uploadResume
+    uploadResume,
+    changePassword,
+    saveJob,
+    unsaveJob,
+    getSavedJobs,
+    forgetPassword,
+    resetPassword
 } from "../controllers/user.controller.js";
 
 import upload from "../middlewares/upload.middleware.js";
-
-
 
 const router = Router();
 
@@ -35,5 +39,11 @@ router.put("/languages", verifyUser, updateLanguages);
 router.put("/profile-summary", verifyUser, updateProfileSummary);
 router.put("/professional-status", verifyUser, updateProfessionalStatus);
 router.post("/upload-resume", verifyUser, upload.single("resume"), uploadResume);
+router.put("/change-password", verifyUser, changePassword);
+router.put("/save-job/:jobId", verifyUser, saveJob);
+router.delete("/unsave-job/:jobId", verifyUser, unsaveJob);
+router.get("/saved-jobs", verifyUser, getSavedJobs);
+router.post("/forget-password", forgetPassword);
+router.post("/reset-password/:token", resetPassword);
 
 export default router;

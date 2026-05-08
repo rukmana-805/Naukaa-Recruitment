@@ -17,7 +17,7 @@ export const CardSkeleton = ({ className = '' }) => (
 export const JobCardSkeleton = () => (
   <div className="card p-5">
     <div className="flex items-start gap-4 mb-4">
-      <div className="skeleton w-12 h-12 rounded-xl flex-shrink-0" />
+      <div className="skeleton w-12 h-12 rounded-xl shrink-0" />
       <div className="flex-1">
         <div className="skeleton h-5 w-3/4 mb-2" />
         <div className="skeleton h-4 w-1/2" />

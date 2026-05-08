@@ -1,4 +1,5 @@
 import axios from 'axios';
+import useAuthStore from '../store/authStore';
 
 const BASE_URL = 'http://localhost:4000/api';
 
@@ -73,9 +74,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         localStorage.removeItem('accessToken');
-        // We don't force redirect here because the user might be on a public page
-        // Instead, we just let the error propagate.
-        // If they are on a protected page, the component or ProtectedRoute will handle it.
+        useAuthStore.getState().logout(); // Force log out the user in the frontend state
       } finally {
         isRefreshing = false;
       }

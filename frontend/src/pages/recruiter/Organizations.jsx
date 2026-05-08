@@ -92,7 +92,7 @@ const Organizations = () => {
               className="card p-5"
             >
               <div className="flex items-start gap-3 mb-4">
-                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
                   {org.logo?.url ? (
                     <img src={org.logo.url} alt={org.name} className="w-full h-full object-cover" />
                   ) : (

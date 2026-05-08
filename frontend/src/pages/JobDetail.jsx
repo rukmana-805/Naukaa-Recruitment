@@ -10,6 +10,7 @@ import { applicationService } from '../services/application.service';
 import { formatSalary, formatExperience, formatRelativeDate, getErrorMessage } from '../utils/helpers';
 import { PageLoader } from '../components/Skeleton';
 import useAuthStore from '../store/authStore';
+import { userService } from '../services/user.service';
 import toast from 'react-hot-toast';
 
 const JobDetail = () => {
@@ -23,6 +24,29 @@ const JobDetail = () => {
   const [applied, setApplied] = useState(false);
   const [answers, setAnswers] = useState({});
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const { updateUser } = useAuthStore();
+
+  const isSaved = user?.savedJobs?.includes(job?._id);
+
+  const toggleSaveJob = async () => {
+    if (!user) {
+      toast.error('Please login to save jobs');
+      return;
+    }
+    try {
+      if (isSaved) {
+        await userService.unsaveJob(job._id);
+        updateUser({ savedJobs: user.savedJobs.filter(id => id !== job._id) });
+        toast.success('Removed from saved jobs');
+      } else {
+        await userService.saveJob(job._id);
+        updateUser({ savedJobs: [...(user.savedJobs || []), job._id] });
+        toast.success('Job saved');
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -52,6 +76,13 @@ const JobDetail = () => {
       return;
     }
 
+    // Validate required questions
+    const missingRequired = job.questions.find(q => q.required && !answers[q._id]);
+    if (missingRequired) {
+      toast.error(`Please answer the required question: "${missingRequired.question}"`);
+      return;
+    }
+
     const answersArray = job.questions.map((q) => ({
       question: q.question,
       answer: answers[q._id] ?? '',
@@ -62,6 +93,9 @@ const JobDetail = () => {
       await applicationService.applyToJob(id, { answers: answersArray });
       setApplied(true);
       setShowApplyModal(false);
+      if (user.savedJobs?.includes(id)) {
+        updateUser({ savedJobs: user.savedJobs.filter(j => j !== id) });
+      }
       toast.success('Application submitted successfully! 🎉');
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -94,7 +128,7 @@ const JobDetail = () => {
           {/* Job header */}
           <div className="card p-6">
             <div className="flex items-start gap-4 mb-5">
-              <div className="w-14 h-14 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-14 h-14 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
                 {company?.logo?.url ? (
                   <img src={company.logo.url} alt={company.name} className="w-full h-full object-cover" />
                 ) : (
@@ -105,6 +139,13 @@ const JobDetail = () => {
                 <h1 className="text-xl font-bold text-gray-900 mb-1">{job.title}</h1>
                 <p className="text-gray-500">{company?.name}</p>
               </div>
+              <button
+                onClick={toggleSaveJob}
+                className={`p-2 rounded-lg transition-colors border ${isSaved ? 'text-green-500 bg-green-50 border-green-100' : 'text-gray-400 border-gray-100 hover:bg-gray-50'}`}
+                title={isSaved ? "Unsave job" : "Save job"}
+              >
+                <BookmarkIcon className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
+              </button>
             </div>
 
             <div className="flex flex-wrap gap-3 text-sm text-gray-600">
@@ -157,7 +198,7 @@ const JobDetail = () => {
               <ul className="space-y-2">
                 {job.responsibilities.map((r, i) => (
                   <li key={i} className="flex gap-2.5 text-sm text-gray-600">
-                    <CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                     {r}
                   </li>
                 ))}

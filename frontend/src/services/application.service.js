@@ -11,4 +11,5 @@ export const applicationService = {
   addNote: (id, notes) => api.patch(`/applications/note/${id}`, { notes }),
   scheduleInterview: (id, data) => api.patch(`/applications/interview/${id}`, data),
   deleteApplication: (id) => api.delete(`/applications/${id}`),
+  getRecruiterApplications: () => api.get('/applications/recruiter/all'),
 };

@@ -5,7 +5,7 @@ import { BriefcaseIcon } from 'lucide-react';
 
 const AuthLayout = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-linear-to-br from-green-50 via-white to-emerald-50 flex flex-col items-center justify-center px-4 py-12">
       {/* Logo */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

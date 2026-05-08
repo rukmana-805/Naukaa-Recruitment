@@ -104,7 +104,7 @@ const Applications = () => {
               className="card p-5"
             >
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
                   <BriefcaseIcon className="w-5 h-5 text-green-600" />
                 </div>
 
@@ -144,7 +144,7 @@ const Applications = () => {
                           const isActive = idx === currentIdx;
                           return (
                             <div key={step} className="flex items-center flex-1 last:flex-none">
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${
                                 isCompleted ? 'bg-green-500' : 'bg-gray-200'
                               }`}>
                                 {isCompleted && (

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const userSchema = new mongoose.Schema(
   {
@@ -138,7 +139,7 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    
+
     lastLogin: Date,
 
     // FEATURES
@@ -155,6 +156,10 @@ const userSchema = new mongoose.Schema(
       enum: ["free", "paid"],
       default: "free",
     },
+
+    // for forgot password
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
 
     subscription: {
       type: mongoose.Schema.Types.ObjectId,
@@ -173,6 +178,21 @@ userSchema.pre("save", async function () {
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
+
+userSchema.methods.getResetPasswordToken = function() {
+
+  const resetToken = crypto.randomBytes(20).toString("hex");
+
+  this.resetPasswordToken = crypto
+  .createHash("sha256")
+  .update(resetToken)
+  .digest("hex");
+
+  // 15 minutes expiry time
+  this.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+
+  return resetToken;
+}
 
 // Castading Handle
 

@@ -93,6 +93,11 @@ const Login = () => {
           {errors.password && (
             <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
           )}
+          <div className="flex justify-end mt-2">
+            <Link to="/forgot-password" className="text-xs font-medium text-green-600 hover:text-green-700">
+              Forgot password?
+            </Link>
+          </div>
         </div>
 
         <motion.button

@@ -24,9 +24,13 @@ const ApplicationsManager = () => {
 
   useEffect(() => {
     const fetch = async () => {
-      if (!jobId) return;
       try {
-        const res = await applicationService.getJobApplications(jobId);
+        let res;
+        if (jobId) {
+          res = await applicationService.getJobApplications(jobId);
+        } else {
+          res = await applicationService.getRecruiterApplications();
+        }
         setApplications(res.data.data || []);
       } catch (err) {
         toast.error(getErrorMessage(err));
@@ -104,7 +108,7 @@ const ApplicationsManager = () => {
                   selected?._id === app._id ? 'border-2 border-green-400 bg-green-50' : 'hover:border-gray-300'
                 }`}
               >
-                <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
                   <UserIcon className="w-4 h-4 text-gray-500" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -114,7 +118,7 @@ const ApplicationsManager = () => {
                   <p className="text-xs text-gray-500 truncate">{app.applicantSnapshot?.email}</p>
                   <p className="text-xs text-gray-400 mt-1">{formatRelativeDate(app.appliedAt)}</p>
                 </div>
-                <span className={`${getStatusBadgeClass(app.status)} capitalize text-[10px] flex-shrink-0`}>
+                <span className={`${getStatusBadgeClass(app.status)} capitalize text-[10px] shrink-0`}>
                   {app.status}
                 </span>
               </motion.button>
@@ -132,7 +136,7 @@ const ApplicationsManager = () => {
               >
                 {/* Applicant header */}
                 <div className="flex items-start gap-4 mb-6 pb-5 border-b border-gray-100">
-                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
                     <UserIcon className="w-6 h-6 text-green-600" />
                   </div>
                   <div className="flex-1">

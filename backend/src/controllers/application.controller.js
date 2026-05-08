@@ -86,6 +86,12 @@ const applyToJob = asyncHandler(async (req, res) => {
     },
   });
 
+  // Remove from saved jobs if applied
+  if (user.savedJobs && user.savedJobs.includes(jobId)) {
+    user.savedJobs = user.savedJobs.filter((id) => id.toString() !== jobId.toString());
+    await user.save();
+  }
+
   res
     .status(201)
     .json(new ApiResponse(201, application, "Applied successfully"));
@@ -120,6 +126,19 @@ const getJobApplications = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json(new ApiResponse(200, applications, "Applications fetched"));
+});
+
+const getRecruiterApplications = asyncHandler(async (req, res) => {
+  const jobs = await Job.find({ postedBy: req.user._id }).select("_id");
+  const jobIds = jobs.map((j) => j._id);
+
+  const applications = await Application.find({ job: { $in: jobIds } }).sort({
+    createdAt: -1,
+  });
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, applications, "Recruiter applications fetched"));
 });
 
 const getApplicationById = asyncHandler(async (req, res) => {
@@ -342,4 +361,5 @@ export {
   scheduleInterview,
   addNote,
   applicationReviewUpdate,
+  getRecruiterApplications,
 };

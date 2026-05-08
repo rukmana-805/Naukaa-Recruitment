@@ -157,7 +157,7 @@ const Dashboard = () => {
             <div className="card divide-y divide-gray-50">
               {recentApplications.map((app) => (
                 <div key={app._id} className="p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
                     <BriefcaseIcon className="w-4 h-4 text-green-600" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -168,7 +168,7 @@ const Dashboard = () => {
                       {app.jobSnapshot?.companyName} · {formatRelativeDate(app.appliedAt)}
                     </p>
                   </div>
-                  <span className={`${getStatusBadgeClass(app.status)} flex-shrink-0 capitalize`}>
+                  <span className={`${getStatusBadgeClass(app.status)} shrink-0 capitalize`}>
                     {app.status}
                   </span>
                 </div>

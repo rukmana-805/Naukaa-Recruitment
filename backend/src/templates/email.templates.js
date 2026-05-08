@@ -21,23 +21,32 @@ export const emailTemplates = {
   }),
 
   [EMAIL_TYPES.PAYMENT_SUCCESS]: (payload = {}) => {
-  const { name = "User", plan = "your plan", amount = "" } = payload;
+    const { name = "User", plan = "your plan", amount = "" } = payload;
 
-  return {
-    subject: "Plan Activated 🚀",
-    html: `
+    return {
+      subject: "Plan Activated 🚀",
+      html: `
       <h2>Hi ${name},</h2>
       <p>Your ${plan} has been activated successfully.</p>
       <p>Amount: ${amount}</p>
     `,
-  };
-},
+    };
+  },
 
   [EMAIL_TYPES.PAYMENT_FAILED]: ({ name }) => ({
     subject: "Payment Failed ❌",
     html: `
       <h2>Hi ${name},</h2>
       <p>Your payment failed. Please try again.</p>
+    `,
+  }),
+
+  [EMAIL_TYPES.FORGOT_PASSWORD]: ({ name, token }) => ({
+    subject: "Forgot Password",
+    html: `
+      <h2>Hi ${name},</h2>
+      <p>Your forgot password</p>
+      <p><b>Token:</b> ${token} click this link to reset your password</p>
     `,
   }),
 };

@@ -9,7 +9,8 @@ import {
   addNote,
   scheduleInterview,
   withdrawApplication,
-  deleteApplication
+  deleteApplication,
+  getRecruiterApplications
 } from "../controllers/application.controller.js";
 
 import verifyUser from "../middlewares/auth.middleware.js";
@@ -26,6 +27,7 @@ router.patch("/withdraw/:id", verifyUser, withdrawApplication);
 
 // RECRUITER ROUTES
 router.get("/job/:jobId", verifyUser, getJobApplications);
+router.get("/recruiter/all", verifyUser, getRecruiterApplications);
 router.patch("/status/:id", verifyUser, updateApplicationStatus);
 router.patch("/note/:id", verifyUser, addNote);
 router.patch("/interview/:id", verifyUser, scheduleInterview);

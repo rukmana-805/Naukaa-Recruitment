@@ -1,12 +1,39 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { MapPinIcon, BriefcaseIcon, DollarSignIcon, ClockIcon, ArrowRightIcon } from 'lucide-react';
-import { formatSalary, formatExperience, formatRelativeDate, truncate } from '../utils/helpers';
+import { MapPinIcon, BriefcaseIcon, DollarSignIcon, ClockIcon, ArrowRightIcon, BookmarkIcon } from 'lucide-react';
+import { formatSalary, formatExperience, formatRelativeDate, truncate, getErrorMessage } from '../utils/helpers';
 import { getStatusBadgeClass } from '../utils/helpers';
+import useAuthStore from '../store/authStore';
+import { userService } from '../services/user.service';
+import toast from 'react-hot-toast';
 
 const JobCard = ({ job, showApplyButton = true }) => {
+  const { user, updateUser } = useAuthStore();
   const company = job.company;
   const logo = company?.logo?.url;
+
+  const isSaved = user?.savedJobs?.includes(job._id);
+
+  const toggleSaveJob = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      toast.error('Please login to save jobs');
+      return;
+    }
+    try {
+      if (isSaved) {
+        await userService.unsaveJob(job._id);
+        updateUser({ savedJobs: user.savedJobs.filter(id => id !== job._id) });
+        toast.success('Removed from saved jobs');
+      } else {
+        await userService.saveJob(job._id);
+        updateUser({ savedJobs: [...(user.savedJobs || []), job._id] });
+        toast.success('Job saved');
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
 
   return (
     <motion.div
@@ -17,7 +44,7 @@ const JobCard = ({ job, showApplyButton = true }) => {
       {/* Header */}
       <div className="flex items-start gap-3">
         {/* Company logo */}
-        <div className="w-11 h-11 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+        <div className="w-11 h-11 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
           {logo ? (
             <img src={logo} alt={company?.name} className="w-full h-full object-cover" />
           ) : (
@@ -34,9 +61,18 @@ const JobCard = ({ job, showApplyButton = true }) => {
           </p>
         </div>
 
-        <span className={`${getStatusBadgeClass(job.status)} flex-shrink-0`}>
-          {job.status}
-        </span>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <span className={`${getStatusBadgeClass(job.status)}`}>
+            {job.status}
+          </span>
+          <button
+            onClick={toggleSaveJob}
+            className={`p-1.5 rounded-lg transition-colors ${isSaved ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-50'}`}
+            title={isSaved ? "Unsave job" : "Save job"}
+          >
+            <BookmarkIcon className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Meta info */}

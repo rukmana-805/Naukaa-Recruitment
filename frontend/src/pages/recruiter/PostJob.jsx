@@ -31,6 +31,7 @@ const PostJob = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [responsibilities, setResponsibilities] = useState(['']);
+  const [questions, setQuestions] = useState([]);
 
   const {
     register,
@@ -54,6 +55,7 @@ const PostJob = () => {
           : [],
         responsibilities: responsibilities.filter(Boolean),
         expiresAt: data.expiresAt || undefined,
+        questions: questions.filter(q => q.question.trim()),
       };
       const res = await jobService.createJob(payload);
       toast.success('Job posted successfully!');
@@ -71,6 +73,24 @@ const PostJob = () => {
     const arr = [...responsibilities];
     arr[i] = val;
     setResponsibilities(arr);
+  };
+
+  const addQuestion = () => {
+    setQuestions([...questions, { question: '', type: 'text', required: true, options: [] }]);
+  };
+
+  const removeQuestion = (i) => {
+    setQuestions(questions.filter((_, idx) => idx !== i));
+  };
+
+  const updateQuestion = (i, field, val) => {
+    const arr = [...questions];
+    if (field === 'options') {
+      arr[i][field] = val.split(',').map(o => o.trim()).filter(Boolean);
+    } else {
+      arr[i][field] = val;
+    }
+    setQuestions(arr);
   };
 
   return (
@@ -183,6 +203,84 @@ const PostJob = () => {
             <PlusIcon className="w-4 h-4" />
             Add Responsibility
           </button>
+        </div>
+
+        {/* Custom Questions */}
+        <div className="card p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">Custom Questions</h2>
+            <button type="button" onClick={addQuestion} className="btn-secondary text-sm">
+              <PlusIcon className="w-4 h-4" />
+              Add Question
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 italic">Add questions that applicants must answer when applying for this job.</p>
+
+          <div className="space-y-4 mt-4">
+            {questions.map((q, i) => (
+              <div key={i} className="p-4 bg-gray-50 rounded-xl relative border border-gray-100 space-y-3">
+                <button type="button" onClick={() => removeQuestion(i)} className="absolute top-3 right-3 text-red-400 hover:text-red-600 bg-white p-1.5 rounded-lg shadow-sm">
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+                
+                <div>
+                  <label className="label text-[11px]">Question Text</label>
+                  <input
+                    type="text"
+                    value={q.question}
+                    onChange={(e) => updateQuestion(i, 'question', e.target.value)}
+                    className="input py-1.5 text-sm"
+                    placeholder="e.g. How many years of experience do you have with React?"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label text-[11px]">Response Type</label>
+                    <select
+                      value={q.type}
+                      onChange={(e) => updateQuestion(i, 'type', e.target.value)}
+                      className="input py-1.5 text-sm"
+                    >
+                      <option value="text">Text Answer</option>
+                      <option value="number">Number</option>
+                      <option value="select">Multiple Choice (Dropdown)</option>
+                      <option value="boolean">Yes / No</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center mt-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={q.required}
+                        onChange={(e) => updateQuestion(i, 'required', e.target.checked)}
+                        className="accent-green-500 rounded"
+                      />
+                      <span className="text-xs font-medium text-gray-700">Required</span>
+                    </label>
+                  </div>
+                </div>
+
+                {q.type === 'select' && (
+                  <div>
+                    <label className="label text-[11px]">Options (comma separated)</label>
+                    <input
+                      type="text"
+                      value={q.options.join(', ')}
+                      onChange={(e) => updateQuestion(i, 'options', e.target.value)}
+                      className="input py-1.5 text-sm"
+                      placeholder="e.g. 1-2 years, 3-5 years, 5+ years"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+            {questions.length === 0 && (
+              <p className="text-center py-4 text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl">
+                No custom questions added.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Actions */}

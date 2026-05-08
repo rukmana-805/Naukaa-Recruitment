@@ -16,4 +16,10 @@ export const userService = {
     api.post('/users/upload-resume', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  changePassword: (data) => api.put('/users/change-password', data),
+  saveJob: (jobId) => api.put(`/users/save-job/${jobId}`),
+  unsaveJob: (jobId) => api.delete(`/users/unsave-job/${jobId}`),
+  getSavedJobs: () => api.get('/users/saved-jobs'),
+  forgetPassword: (data) => api.post('/users/forget-password', data),
+  resetPassword: (token, data) => api.post(`/users/reset-password/${token}`, data),
 };

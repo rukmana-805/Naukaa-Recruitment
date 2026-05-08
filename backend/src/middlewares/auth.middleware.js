@@ -21,7 +21,12 @@ const verifyUser = asyncHandler(async (req, res, next) => {
   }
 
   // Verify token
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    throw new ApiError(401, error.name === "TokenExpiredError" ? "jwt expired" : "Invalid token");
+  }
 
   // Get user from DB
   const user = await UserModel.findById(decoded.id).select("-password -refreshToken");

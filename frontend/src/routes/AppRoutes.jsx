@@ -15,12 +15,16 @@ import Pricing from '../pages/Pricing';
 // Auth pages
 import Login from '../pages/Login';
 import Register from '../pages/Register';
+import ForgotPassword from '../pages/ForgotPassword';
+import ResetPassword from '../pages/ResetPassword';
 
 // Protected user pages
 import Dashboard from '../pages/Dashboard';
 import Applications from '../pages/Applications';
 import Profile from '../pages/Profile';
 import Notifications from '../pages/Notifications';
+import SavedJobs from '../pages/SavedJobs';
+import Settings from '../pages/Settings';
 
 // Recruiter pages
 import RecruiterDashboard from '../pages/recruiter/RecruiterDashboard';
@@ -31,13 +35,15 @@ import Organizations from '../pages/recruiter/Organizations';
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* ── AUTH LAYOUT ── */}
+      {/* AUTH LAYOUT */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
       </Route>
 
-      {/* ── PUBLIC LAYOUT ── */}
+      {/*  PUBLIC LAYOUT  */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Landing />} />
         <Route path="/jobs" element={<Jobs />} />
@@ -45,7 +51,7 @@ const AppRoutes = () => {
         <Route path="/pricing" element={<Pricing />} />
       </Route>
 
-      {/* ── APP LAYOUT (protected) ── */}
+      {/*  APP LAYOUT (protected)  */}
       <Route
         element={
           <ProtectedRoute>
@@ -58,6 +64,8 @@ const AppRoutes = () => {
         <Route path="/applications" element={<Applications />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/saved-jobs" element={<SavedJobs />} />
+        <Route path="/settings" element={<Settings />} />
 
         {/* Recruiter routes */}
         <Route

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboardIcon, BriefcaseIcon, FileTextIcon,
   UserIcon, CreditCardIcon, BellIcon, BuildingIcon,
-  PlusCircleIcon, UsersIcon, LogOutIcon,
+  PlusCircleIcon, UsersIcon, LogOutIcon, BookmarkIcon, SettingsIcon
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useNotificationStore from '../store/notificationStore';
@@ -14,9 +14,11 @@ const userNavItems = [
   { to: '/dashboard', icon: LayoutDashboardIcon, label: 'Dashboard' },
   { to: '/jobs', icon: BriefcaseIcon, label: 'Browse Jobs' },
   { to: '/applications', icon: FileTextIcon, label: 'My Applications' },
+  { to: '/saved-jobs', icon: BookmarkIcon, label: 'Saved Jobs' },
   { to: '/profile', icon: UserIcon, label: 'My Profile' },
   { to: '/pricing', icon: CreditCardIcon, label: 'Upgrade Plan' },
   { to: '/notifications', icon: BellIcon, label: 'Notifications' },
+  { to: '/settings', icon: SettingsIcon, label: 'Settings' },
 ];
 
 const recruiterNavItems = [
@@ -25,9 +27,10 @@ const recruiterNavItems = [
   { to: '/recruiter/organizations', icon: BuildingIcon, label: 'Organizations' },
   { to: '/recruiter/applications', icon: UsersIcon, label: 'Applications' },
   { to: '/notifications', icon: BellIcon, label: 'Notifications' },
+  { to: '/settings', icon: SettingsIcon, label: 'Settings' },
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ onClose }) => {
   const { user, logout } = useAuthStore();
   const { unreadCount } = useNotificationStore();
   const navigate = useNavigate();
@@ -38,6 +41,7 @@ const Sidebar = () => {
     await logout();
     toast.success('Logged out successfully');
     navigate('/');
+    if (onClose) onClose();
   };
 
   return (
@@ -45,7 +49,7 @@ const Sidebar = () => {
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="w-64 min-h-screen bg-white border-r border-gray-100 flex flex-col"
+      className="w-64 h-full bg-white border-r border-gray-100 flex flex-col"
     >
       {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-100">
@@ -62,7 +66,7 @@ const Sidebar = () => {
       {/* User info */}
       <div className="px-4 py-4 border-b border-gray-50">
         <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50">
-          <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
             <span className="text-green-700 text-sm font-bold">
               {getInitials(user?.fullName)}
             </span>
@@ -84,6 +88,7 @@ const Sidebar = () => {
             className={({ isActive }) =>
               isActive ? 'sidebar-link-active' : 'sidebar-link'
             }
+            onClick={() => onClose && onClose()}
           >
             <div className="relative">
               <Icon className="w-4.5 h-4.5" />
