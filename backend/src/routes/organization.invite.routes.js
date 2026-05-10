@@ -11,7 +11,7 @@ import {
 
 const router = Router();
 
-router.post("/invite-recruiter", verifyUser, isOwner, inviteRecruiter);
+router.post("/invite-recruiter/:id", verifyUser, isOwner, inviteRecruiter);
 router.get("/validate-invite/:token", validateInvite);
 router.post("/accept-invite/:token", acceptInvite);
 router.post("/cancel-invite", verifyUser, isOwner, cancelInvite);

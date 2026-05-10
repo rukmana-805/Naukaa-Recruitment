@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { PlusCircleIcon, BuildingIcon, TrashIcon, UsersIcon, UserPlusIcon, MailIcon, LinkIcon, EyeIcon, XIcon, ArrowRightIcon } from 'lucide-react';
 import { organizationService } from '../../services/organization.service';
 import api from '../../services/api';
-import { getErrorMessage, formatRelativeDate } from '../../utils/helpers';
+import { getErrorMessage, formatRelativeDate, getStatusBadgeClass } from '../../utils/helpers';
 import { PageLoader } from '../../components/Skeleton';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
@@ -21,12 +21,14 @@ const socket = io(
 const Organizations = () => {
   const { user: currentUser } = useAuthStore();
   const [org, setOrg] = useState(null);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [activity, setActivity] = useState(null); // { memberId, data: [], loading: false }
   const navigate = useNavigate();
+  const isOwner = currentUser?.role === 'owner';
 
   const { register, handleSubmit, reset, setValue } = useForm();
   const { register: registerEdit, handleSubmit: handleEditSubmit } = useForm();
@@ -37,15 +39,25 @@ const Organizations = () => {
         const res = await organizationService.getMyOrganizations();
         const orgs = res.data.data || [];
         if (orgs.length > 0) {
-          setOrg(orgs[0]);
+          const orgData = res.data.data[0];
+          if (!orgData) {
+            setLoading(false);
+            return;
+          }
+          setOrg(orgData);
+          
           // Prefill edit form
-          setValue('name', orgs[0].name);
-          setValue('email', orgs[0].email);
-          setValue('phone', orgs[0].phone);
-          setValue('website', orgs[0].website);
+          setValue('name', orgData.name);
+          setValue('email', orgData.email);
+          setValue('phone', orgData.phone);
+          setValue('website', orgData.website);
+
+          // Fetch Stats
+          const statsRes = await api.get(`/organizations/${orgData._id}/stats`);
+          setStats(statsRes.data.data);
         }
       } catch (err) {
-        toast.error(getErrorMessage(err));
+        console.error("Error fetching org:", err);
       } finally {
         setLoading(false);
       }
@@ -134,12 +146,20 @@ const Organizations = () => {
         <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
           <BuildingIcon className="w-10 h-10 text-green-600" />
         </div>
-        <h2 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">Establish Your Presence</h2>
-        <p className="text-gray-500 mb-8 leading-relaxed">As an owner, you can build a powerful brand presence. Create your organization profile to start hiring top talent.</p>
-        <button onClick={() => navigate('/recruiter/create-organization')} className="btn-primary inline-flex justify-center w-full py-4 shadow-xl shadow-green-100">
-          <PlusCircleIcon className="w-5 h-5 mr-2" />
-          Create Organization Profile
-        </button>
+        <h2 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">
+          {isOwner ? 'Establish Your Presence' : 'No Organization Found'}
+        </h2>
+        <p className="text-gray-500 mb-8 leading-relaxed">
+          {isOwner 
+            ? 'As an owner, you can build a powerful brand presence. Create your organization profile to start hiring top talent.' 
+            : 'You are not yet connected to any organization. Please wait for an invitation from your company owner.'}
+        </p>
+        {isOwner && (
+          <button onClick={() => navigate('/recruiter/create-organization')} className="btn-primary inline-flex justify-center w-full py-4 shadow-xl shadow-green-100">
+            <PlusCircleIcon className="w-5 h-5 mr-2" />
+            Create Organization Profile
+          </button>
+        )}
       </div>
     );
   }
@@ -150,7 +170,9 @@ const Organizations = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center gap-3 mb-2">
-            <span className="badge-green">Owner View</span>
+            <span className={isOwner ? "badge-green" : "badge-blue"}>
+              {isOwner ? 'Owner View' : 'Recruiter View'}
+            </span>
             <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">Organization Management</span>
           </div>
           <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-none">
@@ -162,10 +184,12 @@ const Organizations = () => {
           </p>
         </motion.div>
         
-        <div className="flex gap-3">
-           <button onClick={() => setIsEditing(true)} className="btn-secondary px-6">
-             Edit Profile
-           </button>
+        <div className="flex items-center gap-3">
+           {isOwner && (
+             <button onClick={() => setIsEditing(true)} className="btn-secondary">
+               Edit Organization
+             </button>
+           )}
            <button className="btn-primary shadow-lg shadow-green-100">
              Public Page
            </button>
@@ -219,6 +243,13 @@ const Organizations = () => {
                   <div>
                     <h4 className="text-sm font-black text-gray-900 mb-4 uppercase tracking-wider">Details</h4>
                     <div className="space-y-3">
+                       {/* Owner Information (Visible to all) */}
+                       <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 mb-3">
+                          <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Organization Owner</p>
+                          <p className="text-sm font-bold text-gray-800">{org.owner?.fullName}</p>
+                          <p className="text-[10px] text-gray-500">{org.owner?.email}</p>
+                       </div>
+
                        <p className="text-sm text-gray-600">
                          {org.organizationType === 'COMPANY' 
                            ? `Size: ${org.companyDetails?.employeesCount || 'N/A'} Employees`
@@ -233,67 +264,95 @@ const Organizations = () => {
             </div>
           </div>
 
-          {/* Team Management Section */}
+          {/* Conditional Section: Team for Companies, Insights for Individuals */}
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Team Members</h2>
-              <span className="badge-gray">{org.members?.length || 0} Members</span>
-            </div>
+            {org.organizationType === 'COMPANY' ? (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">Team Members</h2>
+                  <span className="badge-gray">{org.members?.length || 0} Members</span>
+                </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              {org.members?.map((member, idx) => {
-                const isOnline = onlineUsers[member.user?._id];
-                const isMemberOwner = member.role === 'owner';
-                return (
-                  <motion.div 
-                    key={idx}
-                    layout
-                    className={`card p-5 flex items-center gap-4 hover:shadow-md transition-all group ${isMemberOwner ? 'bg-green-50/20 border-green-100' : ''}`}
-                  >
-                    <div className="relative">
-                      <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-xl text-green-600 shadow-sm border border-gray-100 group-hover:rotate-3 transition-transform">
-                        {member.user?.fullName?.charAt(0)}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {org.members?.map((member, idx) => {
+                    const isOnline = onlineUsers[member.user?._id];
+                    const isMemberOwner = member.role === 'owner';
+                    return (
+                      <motion.div 
+                        key={idx}
+                        layout
+                        className={`card p-5 flex items-center gap-4 hover:shadow-md transition-all group ${isMemberOwner ? 'bg-green-50/20 border-green-100' : ''}`}
+                      >
+                        <div className="relative">
+                          <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-xl text-green-600 shadow-sm border border-gray-100 group-hover:rotate-3 transition-transform">
+                            {member.user?.fullName?.charAt(0)}
+                          </div>
+                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                           <p className="font-bold text-gray-900 truncate flex items-center gap-2">
+                             {member.user?.fullName || 'Anonymous User'}
+                             {member.user?._id === currentUser?._id && <span className="text-[10px] bg-green-600 text-white px-1.5 rounded-md uppercase">You</span>}
+                           </p>
+                           <p className="text-xs text-gray-500 truncate">{member.user?.email || 'No email'}</p>
+                           <p className="text-[10px] font-black text-gray-400 uppercase mt-1 tracking-widest">{member.role}</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">Recruitment Pipeline</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="badge-green">{stats?.jobsCount || 0} Active Jobs</span>
+                    <span className="badge-blue">{stats?.followers || 0} Followers</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {stats && Object.entries(stats.pipeline).filter(([key]) => key !== 'total').map(([status, count]) => (
+                    <motion.div 
+                      key={status}
+                      whileHover={{ y: -4 }}
+                      className="card p-6 flex flex-col items-center justify-center text-center space-y-2 border-transparent hover:border-green-100 transition-all"
+                    >
+                      <p className="text-3xl font-black text-gray-900">{count}</p>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{status}</p>
+                      <div className={`w-8 h-1 rounded-full ${getStatusBadgeClass(status).replace('badge-', 'bg-')}`} />
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Engagement Card */}
+                <div className="mt-6 card p-8 bg-gradient-to-br from-green-600 to-emerald-700 text-white border-none relative overflow-hidden">
+                   <div className="relative z-10">
+                      <h3 className="text-xl font-bold mb-2">Grow Your Network</h3>
+                      <p className="text-sm text-green-100 mb-6 max-w-md">Your organization profile has been viewed {org.views} times. Keep posting jobs to increase your visibility!</p>
+                      <div className="flex gap-4">
+                        <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl">
+                          <p className="text-xs text-green-200">Followers</p>
+                          <p className="text-lg font-bold">{stats?.followers || 0}</p>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl">
+                          <p className="text-xs text-green-200">Total Applicants</p>
+                          <p className="text-lg font-bold">{stats?.pipeline?.total || 0}</p>
+                        </div>
                       </div>
-                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                       <p className="font-bold text-gray-900 truncate flex items-center gap-2">
-                         {member.user?.fullName || 'Anonymous User'}
-                         {isMemberOwner && <span className="text-[10px] bg-green-600 text-white px-1.5 rounded-md">YOU</span>}
-                       </p>
-                       <p className="text-xs text-gray-500 truncate">{member.user?.email || 'No email'}</p>
-                       <p className="text-[10px] font-black text-gray-400 uppercase mt-1 tracking-widest">{member.role}</p>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                       <button 
-                         onClick={() => viewActivity(member.user?._id)}
-                         className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all"
-                         title="Activity Details"
-                       >
-                         <EyeIcon className="w-4.5 h-4.5" />
-                       </button>
-                       {!isMemberOwner && (
-                         <button 
-                           onClick={() => removeMember(member.user?._id)}
-                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                           title="Revoke Access"
-                         >
-                           <TrashIcon className="w-4.5 h-4.5" />
-                         </button>
-                       )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                   </div>
+                   <UsersIcon className="absolute -bottom-4 -right-4 w-32 h-32 text-white/10 rotate-12" />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
         <div className="space-y-8">
-           {/* Invite Section */}
-           {org.organizationType === 'COMPANY' && (
+           {/* Invite Section (Owner Only) */}
+           {org.organizationType === 'COMPANY' && isOwner && (
              <div className="card p-8 bg-black text-white relative overflow-hidden">
                 {/* Abstract background shape */}
                 <div className="absolute -top-12 -right-12 w-32 h-32 bg-green-500/20 rounded-full blur-3xl" />

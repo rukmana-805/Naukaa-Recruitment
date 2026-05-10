@@ -6,6 +6,7 @@ import cloudinary from "../config/cloudinary.js";
 import UserModel from "../models/User.model.js";
 import fs from "fs";
 import mongoose from "mongoose";
+import Application from "../models/Application.model.js";
 
 // SLUG GENERATOR
 const generateSlug = (name) => {
@@ -118,12 +119,12 @@ export const updateIndividualCompanyDetails = asyncHandler(async (req, res) => {
 
   // Verify aadhar here through otp
   const updatedOrg = await Organization.findByIdAndUpdate(
-    orgId,
+    id,
     {
       $set: {
-        aadhaarNumber,
-        panNumber,
-        hiringFor,
+        "individualDetails.aadhaarNumber": aadhaarNumber,
+        "individualDetails.panNumber": panNumber,
+        "individualDetails.hiringFor": hiringFor,
         profileCompletionStep: 2,
       },
     },
@@ -189,6 +190,14 @@ export const updateIndividualCompanyCertificate = asyncHandler(
     organization.profileCompletionStep = 3;
     organization.isProfileCompleted = true;
 
+    // owner is also member of organization
+    if (!organization.members.find(m => m.user.toString() === req.user._id.toString())) {
+      organization.members.push({
+        user: req.user._id,
+        role: "owner",
+      });
+    }
+
     await organization.save();
 
     return res.status(200).json({
@@ -223,13 +232,16 @@ export const updateCompanyDetails = asyncHandler(async (req, res) => {
     id,
     {
       $set: {
-        employeesCount,
-        revenue,
-        offices,
-        headquarters,
-        gstNumber,
-        cinNumber,
-        companySize,
+        website,
+        address,
+        "companyDetails.employeesCount": employeesCount,
+        "companyDetails.revenue": revenue,
+        "companyDetails.offices": offices,
+        "companyDetails.headquarters": headquarters,
+        "companyDetails.gstNumber": gstNumber,
+        "companyDetails.cinNumber": cinNumber,
+        "companyDetails.companySize": companySize,
+        profileCompletionStep: 2,
       },
     },
     { new: true },
@@ -314,8 +326,14 @@ export const updateCompanyCertificate = asyncHandler(async (req, res) => {
 // GET MY ORGANIZATIONS
 export const getMyOrganizations = asyncHandler(async (req, res) => {
   const orgs = await Organization.find({
-    owner: req.user._id,
-  }).populate('members.user', 'fullName email').sort({ createdAt: -1 });
+    $or: [
+      { owner: req.user._id },
+      { "members.user": req.user._id }
+    ]
+  })
+  .populate('owner', 'fullName email')
+  .populate('members.user', 'fullName email')
+  .sort({ createdAt: -1 });
 
   res.status(200).json(new ApiResponse(200, orgs, "Fetched"));
 });
@@ -579,4 +597,55 @@ export const getMemberActivity = asyncHandler(async (req, res) => {
   }).sort({ createdAt: -1 });
 
   res.status(200).json(new ApiResponse(200, jobs, "Member activity fetched"));
+});
+
+// GET ORGANIZATION STATS (PIPELINE)
+export const getOrganizationStats = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const org = await Organization.findById(id);
+  if (!org) throw new ApiError(404, "Organization not found");
+
+  const isMember = org.members.some(m => m.user.toString() === req.user._id.toString());
+  const isOwner = org.owner.toString() === req.user._id.toString();
+
+  if (!isMember && !isOwner) {
+    throw new ApiError(403, "Not authorized to view stats");
+  }
+
+  const stats = await mongoose.model("Application").aggregate([
+    { $match: { company: new mongoose.Types.ObjectId(id) } },
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const jobsCount = await mongoose.model("Job").countDocuments({ company: id });
+  const followersCount = await Organization.findById(id).select("followers");
+
+  const pipeline = {
+    applied: 0,
+    reviewing: 0,
+    shortlisted: 0,
+    interview: 0,
+    rejected: 0,
+    hired: 0,
+    total: 0
+  };
+
+  stats.forEach(s => {
+    if (pipeline.hasOwnProperty(s._id)) {
+      pipeline[s._id] = s.count;
+      pipeline.total += s.count;
+    }
+  });
+
+  res.status(200).json(new ApiResponse(200, {
+    pipeline,
+    jobsCount,
+    followers: followersCount?.followers?.length || 0
+  }, "Stats fetched"));
 });

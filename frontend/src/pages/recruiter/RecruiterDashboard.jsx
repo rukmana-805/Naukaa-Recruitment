@@ -11,12 +11,21 @@ import { formatRelativeDate, getStatusBadgeClass, getErrorMessage } from '../../
 import { PageLoader, StatsSkeleton } from '../../components/Skeleton';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
+import { io } from 'socket.io-client';
+
+const socket = io(
+  import.meta.env.VITE_API_URL 
+    ? import.meta.env.VITE_API_URL.replace('/api/v1', '').replace('/api', '') 
+    : 'http://localhost:4000',
+  { autoConnect: true }
+);
 
 const RecruiterDashboard = () => {
   const { user } = useAuthStore();
   const [jobs, setJobs] = useState([]);
   const [org, setOrg] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState({});
 
   const isOwner = user?.role === 'owner';
 
@@ -30,7 +39,10 @@ const RecruiterDashboard = () => {
 
         if (orgsRes.status === 'fulfilled') {
           const orgs = orgsRes.value.data.data || [];
-          if (orgs.length > 0) setOrg(orgs[0]);
+          if (orgs.length > 0) {
+            const orgData = orgs[0];
+            setOrg(orgData);
+          }
         }
 
         if (jobsRes.status === 'fulfilled') {
@@ -44,6 +56,20 @@ const RecruiterDashboard = () => {
     };
     fetch();
   }, [user, isOwner]);
+
+  useEffect(() => {
+    if (org?.members) {
+      org.members.forEach(member => {
+        if (member.user?._id) {
+          socket.emit('get_user_status', member.user._id, (response) => {
+            setOnlineUsers(prev => ({ ...prev, [member.user._id]: response.status === 'online' }));
+          });
+        }
+      });
+    }
+  }, [org]);
+
+  const onlineCount = org?.members?.filter(m => onlineUsers[m.user?._id]).length || 0;
 
   const handleDeleteJob = async (id) => {
     if (!window.confirm('Delete this job? All applications will also be removed.')) return;
@@ -73,22 +99,27 @@ const RecruiterDashboard = () => {
       bg: 'bg-blue-50',
       sub: 'Across all active listings'
     },
-    { 
-      label: 'Team Size', 
-      value: org?.members?.length || 1, 
-      icon: TrendingUpIcon, 
-      color: 'text-purple-600', 
-      bg: 'bg-purple-50',
-      sub: isOwner ? `${org?.members?.filter(m => m.role === 'recruiter').length || 0} recruiters` : 'You are in the team'
-    },
-    { 
-      label: 'Org Reach', 
-      value: org?.views || 0, 
-      icon: EyeIcon, 
-      color: 'text-amber-600', 
-      bg: 'bg-amber-50',
-      sub: `${org?.followers?.length || 0} followers`
-    },
+    // Only show these for Owners
+    ...(isOwner ? [
+      { 
+        label: org?.organizationType === 'COMPANY' ? 'Team Active' : 'Followers', 
+        value: org?.organizationType === 'COMPANY' ? onlineCount : (org?.followers?.length || 0), 
+        icon: org?.organizationType === 'COMPANY' ? TrendingUpIcon : UsersIcon, 
+        color: 'text-purple-600', 
+        bg: 'bg-purple-50',
+        sub: org?.organizationType === 'COMPANY' 
+          ? (isOwner ? `${onlineCount} team members online` : 'You are in the team')
+          : 'People following your updates'
+      },
+      { 
+        label: 'Org Reach', 
+        value: org?.views || 0, 
+        icon: EyeIcon, 
+        color: 'text-amber-600', 
+        bg: 'bg-amber-50',
+        sub: `${org?.followers?.length || 0} followers`
+      },
+    ] : []),
   ];
 
   return (
@@ -98,10 +129,18 @@ const RecruiterDashboard = () => {
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
             {isOwner ? 'Organization Hub' : 'Recruiter Dashboard'}
           </h1>
-          <p className="text-gray-500 mt-1 flex items-center gap-2">
-            Welcome back, {user?.fullName} 
-            {isOwner && <span className="badge-green text-[10px] py-0.5 px-2">Owner</span>}
-          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <p className="text-gray-500 flex items-center gap-2">
+              Welcome back, {user?.fullName} 
+              {isOwner && <span className="badge-green text-[10px] py-0.5 px-2">Owner</span>}
+            </p>
+            {org && !isOwner && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold border border-blue-100 uppercase tracking-wider">
+                <BuildingIcon className="w-3 h-3" />
+                Connected to {org.name}
+              </span>
+            )}
+          </div>
         </motion.div>
         
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
@@ -247,14 +286,27 @@ const RecruiterDashboard = () => {
                     <span className="text-gray-500">Industry</span>
                     <span className="font-bold text-gray-900">{org.industry || 'Tech'}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Recruiters</span>
-                    <span className="font-bold text-gray-900">{org.members?.filter(m => m.role === 'recruiter').length || 0} Active</span>
-                  </div>
+                  
+                  {org.organizationType === 'COMPANY' ? (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Team Active</span>
+                      <span className="font-bold text-green-600 flex items-center gap-1.5">
+                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                         {onlineCount} Online
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Status</span>
+                      <span className={`font-bold ${org.verificationStatus === 'VERIFIED' ? 'text-green-600' : 'text-amber-600'}`}>
+                        {org.verificationStatus}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <Link to="/recruiter/organizations" className="btn-secondary w-full justify-center mt-8">
-                   Go to Team Settings
+                   {org.organizationType === 'COMPANY' ? 'Manage Team' : 'View Organization'}
                 </Link>
              </div>
            ) : (

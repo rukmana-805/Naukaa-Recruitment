@@ -40,9 +40,17 @@ const PostJob = () => {
     const verifyOrg = async () => {
       try {
         const res = await api.get('/organizations/my-organizations');
-        if (!res.data.data || res.data.data.length === 0) {
-          toast.error('Please create an organization profile first');
-          navigate('/recruiter/create-organization');
+        const organizations = res.data.data || [];
+        
+        if (organizations.length === 0) {
+          const { user } = useAuthStore.getState();
+          if (user?.role === 'owner') {
+            toast.error('Please create an organization profile first');
+            navigate('/recruiter/create-organization');
+          } else {
+            toast.error('You are not connected to any organization. Please contact your administrator.');
+            navigate('/recruiter');
+          }
         }
       } catch (err) {
         toast.error('Failed to verify organization status');

@@ -25,11 +25,10 @@ const createJob = asyncHandler(async (req, res) => {
   }
 
   const company = await Organization.findOne({
-    members: {
-      $elemMatch: {
-        user: req.user._id,
-      },
-    },
+    $or: [
+      { owner: req.user._id },
+      { members: { $elemMatch: { user: req.user._id } } }
+    ]
   });
 
   if (!company) {
@@ -133,11 +132,10 @@ const getOpenJobs = asyncHandler(async (req, res) => {
 
 const getMyJobs = asyncHandler(async (req, res) => {
   const company = await Organization.findOne({
-    members: {
-      $elemMatch: {
-        user: req.user._id,
-      },
-    },
+    $or: [
+      { owner: req.user._id },
+      { members: { $elemMatch: { user: req.user._id } } }
+    ]
   });
 
   if (!company) {

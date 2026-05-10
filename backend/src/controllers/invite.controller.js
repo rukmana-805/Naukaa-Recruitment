@@ -8,11 +8,11 @@ import { sendEmailToQueue } from "../queues/email.producer.js";
 import { EMAIL_TYPES } from "../constants/email.constants.js";
 
 const inviteRecruiter = asyncHandler(async (req, res) => {
-  const { email, role } = req.body;
-  const orgId = req.params;
+  const { email, role = "recruiter" } = req.body;
+  const { id: orgId } = req.params;
 
-  if (!email || !role) {
-    throw new ApiError(403, "Empty fields are not allowed");
+  if (!email) {
+    throw new ApiError(400, "Email is required");
   }
 
   const organization = await Organization.findById(orgId);

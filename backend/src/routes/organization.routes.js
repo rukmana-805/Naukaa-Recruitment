@@ -20,7 +20,8 @@ import {
   updateCompanyDetails,
   removeMember,
   getRecommendedOrganizations,
-  getMemberActivity
+  getMemberActivity,
+  getOrganizationStats
 } from "../controllers/organization.controller.js";
 
 import upload from "../middlewares/upload.middleware.js";
@@ -76,5 +77,6 @@ router.patch(
 
 router.delete("/:id/member/:memberId", verifyUser, isOwner, removeMember);
 router.get("/:id/member/:memberId/activity", verifyUser, isOwner, getMemberActivity);
+router.get("/:id/stats", verifyUser, getOrganizationStats);
 
 export default router;
