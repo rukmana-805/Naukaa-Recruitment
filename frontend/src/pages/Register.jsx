@@ -45,7 +45,7 @@ const Register = () => {
       const { user, accessToken } = res.data.data;
       setAuth(user, accessToken);
       toast.success('Account created! Welcome to Naukaa 🎉');
-      navigate(user.role === 'recruiter' ? '/recruiter' : '/dashboard', { replace: true });
+      navigate(user.role === 'owner' ? '/recruiter' : '/dashboard', { replace: true });
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {

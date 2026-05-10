@@ -24,7 +24,7 @@ const userNavItems = [
 const recruiterNavItems = [
   { to: '/recruiter', icon: LayoutDashboardIcon, label: 'Dashboard' },
   { to: '/recruiter/post-job', icon: PlusCircleIcon, label: 'Post a Job' },
-  { to: '/recruiter/organizations', icon: BuildingIcon, label: 'Organizations' },
+  { to: '/recruiter/organizations', icon: BuildingIcon, label: 'My Organization' },
   { to: '/recruiter/applications', icon: UsersIcon, label: 'Applications' },
   { to: '/notifications', icon: BellIcon, label: 'Notifications' },
   { to: '/settings', icon: SettingsIcon, label: 'Settings' },
@@ -35,7 +35,7 @@ const Sidebar = ({ onClose }) => {
   const { unreadCount } = useNotificationStore();
   const navigate = useNavigate();
 
-  const navItems = user?.role === 'recruiter' ? recruiterNavItems : userNavItems;
+  const navItems = (user?.role === 'recruiter' || user?.role === 'owner') ? recruiterNavItems : userNavItems;
 
   const handleLogout = async () => {
     await logout();

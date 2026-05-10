@@ -11,12 +11,14 @@ import Landing from '../pages/Landing';
 import Jobs from '../pages/Jobs';
 import JobDetail from '../pages/JobDetail';
 import Pricing from '../pages/Pricing';
+import Companies from '../pages/Companies';
 
 // Auth pages
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import ForgotPassword from '../pages/ForgotPassword';
 import ResetPassword from '../pages/ResetPassword';
+import AcceptInvite from '../pages/AcceptInvite';
 
 // Protected user pages
 import Dashboard from '../pages/Dashboard';
@@ -31,6 +33,7 @@ import RecruiterDashboard from '../pages/recruiter/RecruiterDashboard';
 import PostJob from '../pages/recruiter/PostJob';
 import ApplicationsManager from '../pages/recruiter/ApplicationsManager';
 import Organizations from '../pages/recruiter/Organizations';
+import CreateOrganization from '../pages/recruiter/CreateOrganization';
 
 const AppRoutes = () => {
   return (
@@ -41,6 +44,7 @@ const AppRoutes = () => {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/invite/:token" element={<AcceptInvite />} />
       </Route>
 
       {/*  PUBLIC LAYOUT  */}
@@ -48,6 +52,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Landing />} />
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/jobs/:id" element={<JobDetail />} />
+        <Route path="/companies" element={<Companies />} />
         <Route path="/pricing" element={<Pricing />} />
       </Route>
 
@@ -71,7 +76,7 @@ const AppRoutes = () => {
         <Route
           path="/recruiter"
           element={
-            <ProtectedRoute requiredRole="recruiter">
+            <ProtectedRoute requiredRole={["recruiter", "owner"]}>
               <RecruiterDashboard />
             </ProtectedRoute>
           }
@@ -79,7 +84,7 @@ const AppRoutes = () => {
         <Route
           path="/recruiter/post-job"
           element={
-            <ProtectedRoute requiredRole="recruiter">
+            <ProtectedRoute requiredRole={["recruiter", "owner"]}>
               <PostJob />
             </ProtectedRoute>
           }
@@ -87,7 +92,7 @@ const AppRoutes = () => {
         <Route
           path="/recruiter/applications/:jobId"
           element={
-            <ProtectedRoute requiredRole="recruiter">
+            <ProtectedRoute requiredRole={["recruiter", "owner"]}>
               <ApplicationsManager />
             </ProtectedRoute>
           }
@@ -95,7 +100,7 @@ const AppRoutes = () => {
         <Route
           path="/recruiter/applications"
           element={
-            <ProtectedRoute requiredRole="recruiter">
+            <ProtectedRoute requiredRole={["recruiter", "owner"]}>
               <ApplicationsManager />
             </ProtectedRoute>
           }
@@ -103,8 +108,16 @@ const AppRoutes = () => {
         <Route
           path="/recruiter/organizations"
           element={
-            <ProtectedRoute requiredRole="recruiter">
+            <ProtectedRoute requiredRole={["recruiter", "owner"]}>
               <Organizations />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/recruiter/create-organization"
+          element={
+            <ProtectedRoute requiredRole={["recruiter", "owner"]}>
+              <CreateOrganization />
             </ProtectedRoute>
           }
         />

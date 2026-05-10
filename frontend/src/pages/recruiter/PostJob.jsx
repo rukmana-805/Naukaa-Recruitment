@@ -8,7 +8,9 @@ import { jobService } from '../../services/job.service';
 import { EMPLOYMENT_TYPES } from '../../utils/constants';
 import { getErrorMessage } from '../../utils/helpers';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../../services/api';
+import { PageLoader } from '../../components/Skeleton';
 
 const schema = z.object({
   title: z.string().min(3, 'Job title is required'),
@@ -32,6 +34,25 @@ const PostJob = () => {
   const [loading, setLoading] = useState(false);
   const [responsibilities, setResponsibilities] = useState(['']);
   const [questions, setQuestions] = useState([]);
+  const [checkingOrg, setCheckingOrg] = useState(true);
+
+  useEffect(() => {
+    const verifyOrg = async () => {
+      try {
+        const res = await api.get('/organizations/my-organizations');
+        if (!res.data.data || res.data.data.length === 0) {
+          toast.error('Please create an organization profile first');
+          navigate('/recruiter/create-organization');
+        }
+      } catch (err) {
+        toast.error('Failed to verify organization status');
+        navigate('/recruiter');
+      } finally {
+        setCheckingOrg(false);
+      }
+    };
+    verifyOrg();
+  }, [navigate]);
 
   const {
     register,
@@ -44,6 +65,8 @@ const PostJob = () => {
       experienceRequired: {},
     },
   });
+
+  if (checkingOrg) return <PageLoader />;
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -181,7 +204,7 @@ const PostJob = () => {
         {/* Responsibilities */}
         <div className="card p-6 space-y-4">
           <h2 className="font-semibold text-gray-900">Responsibilities</h2>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-2">
             {responsibilities.map((r, i) => (
               <div key={i} className="flex gap-2">
                 <input
@@ -216,7 +239,7 @@ const PostJob = () => {
           </div>
           <p className="text-xs text-gray-500 italic">Add questions that applicants must answer when applying for this job.</p>
 
-          <div className="space-y-4 mt-4">
+          <div className="space-y-4 mt-4 max-h-96 overflow-y-auto custom-scrollbar pr-2">
             {questions.map((q, i) => (
               <div key={i} className="p-4 bg-gray-50 rounded-xl relative border border-gray-100 space-y-3">
                 <button type="button" onClick={() => removeQuestion(i)} className="absolute top-3 right-3 text-red-400 hover:text-red-600 bg-white p-1.5 rounded-lg shadow-sm">

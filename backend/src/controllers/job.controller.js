@@ -19,22 +19,21 @@ const createJob = asyncHandler(async (req, res) => {
     expiresAt,
   } = req.body;
 
-  // recruiter only
-  if (req.user.role !== "recruiter") {
-    throw new ApiError(403, "Only recruiters can post jobs");
+  // recruiter or owner only
+  if (!["recruiter", "owner"].includes(req.user.role)) {
+    throw new ApiError(403, "Only recruiters or owners can post jobs");
   }
 
   const company = await Organization.findOne({
     members: {
       $elemMatch: {
         user: req.user._id,
-        role: { $in: ["owner", "recruiter"] },
       },
     },
   });
 
   if (!company) {
-    throw new ApiError(404, "Company not found");
+    throw new ApiError(404, "You must create or join an organization before posting jobs");
   }
 
   const job = await Job.create({
@@ -130,6 +129,26 @@ const getOpenJobs = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 });
 
   res.status(200).json(new ApiResponse(200, jobs, "Jobs fetched"));
+});
+
+const getMyJobs = asyncHandler(async (req, res) => {
+  const company = await Organization.findOne({
+    members: {
+      $elemMatch: {
+        user: req.user._id,
+      },
+    },
+  });
+
+  if (!company) {
+    return res.status(200).json(new ApiResponse(200, [], "No organization found"));
+  }
+
+  const jobs = await Job.find({ company: company._id })
+    .populate("company", "name logo")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json(new ApiResponse(200, jobs, "Organization jobs fetched"));
 });
 
 const getJobById = asyncHandler(async (req, res) => {
@@ -461,5 +480,6 @@ export {
   createQuestion,
   updateQuestion,
   deleteQuestion,
-  getRecommendedJobs
+  getRecommendedJobs,
+  getMyJobs
 };

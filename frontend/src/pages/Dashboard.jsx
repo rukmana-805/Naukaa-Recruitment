@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   BriefcaseIcon, FileTextIcon, TrendingUpIcon, CreditCardIcon,
   ArrowRightIcon, CheckCircleIcon, ClockIcon, XCircleIcon,
@@ -25,6 +25,14 @@ const itemVariants = {
 
 const Dashboard = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (user?.role === 'recruiter' || user?.role === 'owner') {
+      navigate('/recruiter', { replace: true });
+    }
+  }, [user, navigate]);
+
   const [applications, setApplications] = useState([]);
   const [subscription, setSubscription] = useState(null);
   const [recommendedJobs, setRecommendedJobs] = useState([]);

@@ -3,6 +3,7 @@ import api from './api';
 export const jobService = {
   getFilteredJobs: (params) => api.get('/jobs/get-filtered-jobs', { params }),
   getOpenJobs: () => api.get('/jobs/get-open-jobs'),
+  getMyJobs: () => api.get('/jobs/get-my-jobs'),
   getJobById: (id) => api.get(`/jobs/get-job/${id}`),
   getRecommendedJobs: () => api.get('/jobs/recommended-jobs'),
   createJob: (data) => api.post('/jobs/create-job', data),

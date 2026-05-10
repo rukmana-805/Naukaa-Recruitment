@@ -5,7 +5,8 @@ import {
     updateQuestion,
     deleteQuestion,
     getOpenJobs,
-    getRecommendedJobs
+    getRecommendedJobs,
+    getMyJobs
 } from '../controllers/job.controller.js';
 
 import verifyUser from "../middlewares/auth.middleware.js";
@@ -14,6 +15,7 @@ const router = Router();
 
 router.post('/create-job', verifyUser, createJob);
 router.get('/get-open-jobs', verifyUser, getOpenJobs);
+router.get('/get-my-jobs', verifyUser, getMyJobs);
 router.get('/get-job/:id', getJobById);
 router.patch('/update-job/:id', verifyUser, updateJob);
 router.delete('/delete-job/:id', verifyUser, deleteJob);

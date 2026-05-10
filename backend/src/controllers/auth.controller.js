@@ -33,7 +33,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 });
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { fullName, email, password } = req.body;
+  const { fullName, email, password, role } = req.body;
 
   // Basic Validation
   if (!fullName || !email || !password) {
@@ -47,11 +47,17 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User already exists");
   }
 
+  let finalRole = role || "user";
+  if (finalRole === "recruiter") {
+    finalRole = "owner";
+  }
+
   // Create user
   const user = await UserModel.create({
     fullName,
     email,
     password,
+    role: finalRole,
   });
 
   // Generate Tokens

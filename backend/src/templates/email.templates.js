@@ -49,4 +49,14 @@ export const emailTemplates = {
       <p><b>Token:</b> ${token} click this link to reset your password</p>
     `,
   }),
+
+  [EMAIL_TYPES.INVITE_RECRUITER]: ({ email, organizationName, inviteLink }) => ({
+    subject: "Invitation from Naukaa as Recruiter",
+    html: `
+      <h2>From Naukaa Recruitment Protal</h2>
+      <h3>Hii ${email}</h3>
+      <p>You got a invitation link from Naukaa from ${organizationName} as a Recruiter</p>
+      <p><b>Link:</b> ${inviteLink} click this link to create your account</p>
+    `,
+  }),
 };

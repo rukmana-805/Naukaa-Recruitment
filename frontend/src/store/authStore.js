@@ -9,6 +9,9 @@ const useAuthStore = create(
       accessToken: null,
       isAuthenticated: false,
       isLoading: false,
+      isHydrated: false,
+
+      setHydrated: () => set({ isHydrated: true }),
 
       setAuth: (user, accessToken) => {
         localStorage.setItem('accessToken', accessToken);
@@ -35,6 +38,9 @@ const useAuthStore = create(
         accessToken: state.accessToken,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: (state) => {
+        return () => state.setHydrated();
+      },
     }
   )
 );

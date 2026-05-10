@@ -3,9 +3,9 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import cloudinary from "../config/cloudinary.js";
+import UserModel from "../models/User.model.js";
 import fs from "fs";
 import mongoose from "mongoose";
-
 
 // SLUG GENERATOR
 const generateSlug = (name) => {
@@ -15,7 +15,6 @@ const generateSlug = (name) => {
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-");
 };
-
 
 // SAFE CLOUDINARY DELETE
 const safeDelete = async (public_id) => {
@@ -28,90 +27,387 @@ const safeDelete = async (public_id) => {
   }
 };
 
-
 // CREATE ORGANIZATION
+// export const createOrganization = asyncHandler(async (req, res) => {
+
+//   if (req.user.role !== "recruiter") {
+//     throw new ApiError(403, "Only recruiters allowed");
+//   }
+
+//   const { name } = req.body;
+
+//   if (!name) throw new ApiError(400, "Name required");
+
+//   // UNIQUE SLUG
+//   let baseSlug = generateSlug(name);
+//   let slug = baseSlug;
+//   let counter = 1;
+
+//   while (await Organization.findOne({ slug })) {
+//     slug = `${baseSlug}-${counter++}`;
+//   }
+
+//   const org = await Organization.create({
+//     ...req.body,
+//     slug,
+//     createdBy: req.user._id,
+//     members: [{ user: req.user._id, role: "owner" }]
+//   });
+
+//   res.status(201).json(
+//     new ApiResponse(201, org, "Organization created")
+//   );
+// });
+
 export const createOrganization = asyncHandler(async (req, res) => {
+  const { organizationType, name, email, phone } = req.body;
 
-  if (req.user.role !== "recruiter") {
-    throw new ApiError(403, "Only recruiters allowed");
+  const orgType = ["COMPANY", "INDIVIDUAL"];
+  if (!organizationType || !orgType.includes(organizationType)) {
+    throw new ApiError(401, "Fill correct Organization type");
   }
 
-  const { name } = req.body;
+  // const {
+  //   fullName, aadhaarNumber, panNumbeer,
+  //   hiringFor
+  // } = individualDetails;
 
-  if (!name) throw new ApiError(400, "Name required");
+  // if(!fullName || !aadhaarNumber || !panNumbeer){
+  //   throw new ApiError(401, "Fill the details properly");
+  // }
 
-  // UNIQUE SLUG
-  let baseSlug = generateSlug(name);
-  let slug = baseSlug;
-  let counter = 1;
+  const user = await UserModel.findById(req.user._id);
 
-  while (await Organization.findOne({ slug })) {
-    slug = `${baseSlug}-${counter++}`;
-  }
-
-  const org = await Organization.create({
-    ...req.body,
-    slug,
-    createdBy: req.user._id,
-    members: [{ user: req.user._id, role: "owner" }]
+  const organization = await Organization.create({
+    organizationType: organizationType,
+    name,
+    email,
+    phone,
+    owner: user._id,
   });
 
-  res.status(201).json(
-    new ApiResponse(201, org, "Organization created")
-  );
+  return res.status(201).json({
+    success: true,
+    message: "Your Organization has been created",
+    organization,
+  });
 });
 
+// Update Company details
+export const updateIndividualCompanyDetails = asyncHandler(async (req, res) => {
+  const { aadhaarNumber, panNumber, hiringFor } = req.body;
+
+  const { id } = req.params;
+
+  if (!aadhaarNumber || !panNumber || !hiringFor) {
+    throw new ApiError(401, "All fields are required");
+  }
+
+  const options = [
+    "Teacher",
+    "Trainer",
+    "Maid",
+    "Cook",
+    "Freelancer",
+    "Assistant",
+    "Other",
+  ];
+  if (!hiringFor || !options.includes(hiringFor)) {
+    throw new ApiError(401, "Select a valid option");
+  }
+
+  // Verify aadhar here through otp
+  const updatedOrg = await Organization.findByIdAndUpdate(
+    orgId,
+    {
+      $set: {
+        aadhaarNumber,
+        panNumber,
+        hiringFor,
+        profileCompletionStep: 2,
+      },
+    },
+    {
+      new: true,
+    },
+  );
+
+  return res.status(200).json({
+    success: true,
+    updatedOrg,
+    message: "Updated Successfully",
+  });
+});
+
+export const updateIndividualCompanyCertificate = asyncHandler(
+  async (req, res) => {
+    const { id } = req.params;
+
+    const organization = await Organization.findById(id);
+
+    if (!organization) {
+      return res.status(404).json({
+        success: false,
+        message: "Organization not found",
+      });
+    }
+
+    const aadhaarFile = req.files?.aadhaar?.[0];
+    const panFile = req.files?.pan?.[0];
+
+    if (!aadhaarFile || !panFile) {
+      return res.status(400).json({
+        success: false,
+        message: "Both Aadhaar and PAN are required",
+      });
+    }
+
+    // UPLOAD ON CLOUDINARY
+    const aadhaarUpload = await cloudinary.uploader.upload(aadhaarFile.path, {
+      folder: "naukaa/documents/aadhaar",
+    });
+
+    const panUpload = await cloudinary.uploader.upload(panFile.path, {
+      folder: "naukaa/documents/pan",
+    });
+
+    // UPDATE DB
+    organization.verificationDocuments = [
+      {
+        name: "AADHAAR",
+        url: aadhaarUpload.secure_url,
+        public_id: aadhaarUpload.public_id,
+      },
+
+      {
+        name: "PAN",
+        url: panUpload.secure_url,
+        public_id: panUpload.public_id,
+      },
+    ];
+
+    organization.profileCompletionStep = 3;
+    organization.isProfileCompleted = true;
+
+    await organization.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Documents uploaded successfully",
+      documents: organization.verificationDocuments,
+    });
+  },
+);
+
+// For Company Details
+export const updateCompanyDetails = asyncHandler(async (req, res) => {
+  const { website, address, companyDetails } = req.body;
+
+  const { id } = req.params;
+
+  if (!website || !address || !companyDetails) {
+    throw new ApiError(401, "All fields are required");
+  }
+
+  const {
+    employeesCount,
+    revenue,
+    offices,
+    headquarters,
+    gstNumber,
+    cinNumber,
+    companySize,
+  } = companyDetails;
+
+  const organization = await Organization.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        employeesCount,
+        revenue,
+        offices,
+        headquarters,
+        gstNumber,
+        cinNumber,
+        companySize,
+      },
+    },
+    { new: true },
+  );
+
+  if (!organization) {
+    throw new ApiError(404, "Organization not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Organization Updated Successfully",
+    organization,
+  });
+});
+
+// For Company Certificates
+export const updateCompanyCertificate = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const organization = await Organization.findById(id);
+
+  if (!organization) {
+    return res.status(404).json({
+      success: false,
+      message: "Organization not found",
+    });
+  }
+
+  const gstFile = req.files?.gst?.[0];
+  const cinFile = req.files?.cin?.[0];
+
+  if (!gstFile || !cinFile) {
+    return res.status(400).json({
+      success: false,
+      message: "Both GST and CIN Certificates are required",
+    });
+  }
+
+  // UPLOAD ON CLOUDINARY
+  const gstUpload = await cloudinary.uploader.upload(gstFile.path, {
+    folder: "naukaa/documents/gst",
+  });
+
+  const cinUpload = await cloudinary.uploader.upload(cinFile.path, {
+    folder: "naukaa/documents/cin",
+  });
+
+  // UPDATE DB
+  organization.verificationDocuments = [
+    {
+      name: "GST_CERTIFICATE",
+      url: gstUpload.secure_url,
+      public_id: gstUpload.public_id,
+    },
+
+    {
+      name: "CIN_CERTIFICATE",
+      url: cinUpload.secure_url,
+      public_id: cinUpload.public_id,
+    },
+  ];
+
+  organization.profileCompletionStep = 3;
+  organization.isProfileCompleted = true;
+
+  // owner is also member of organization
+  organization.members.push({
+    user: req.user._id,
+    role: "owner",
+  });
+
+  await organization.save();
+
+  return res.status(200).json({
+    success: true,
+    message: "Documents uploaded successfully",
+    documents: organization.verificationDocuments,
+  });
+});
 
 // GET MY ORGANIZATIONS
 export const getMyOrganizations = asyncHandler(async (req, res) => {
-
   const orgs = await Organization.find({
-    createdBy: req.user._id
-  }).sort({ createdAt: -1 });
+    owner: req.user._id,
+  }).populate('members.user', 'fullName email').sort({ createdAt: -1 });
 
-  res.status(200).json(
-    new ApiResponse(200, orgs, "Fetched")
-  );
+  res.status(200).json(new ApiResponse(200, orgs, "Fetched"));
 });
 
+// GET ALL ORGANIZATIONS (PUBLIC)
+export const getAllOrganizations = asyncHandler(async (req, res) => {
+  const { industry, organizationType, search } = req.query;
+
+  const query = {
+    isProfileCompleted: true,
+    isBlocked: false,
+    isActive: true,
+  };
+
+  if (industry) {
+    query.industry = industry;
+  }
+
+  if (organizationType) {
+    query.organizationType = organizationType;
+  }
+
+  if (search) {
+    query.name = { $regex: search, $options: "i" };
+  }
+
+  const organizations = await Organization.find(query)
+    .select("name tagline logo industry organizationType followers views")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json(new ApiResponse(200, organizations, "Fetched all organizations"));
+});
+
+// GET RECOMMENDED ORGANIZATIONS
+export const getRecommendedOrganizations = asyncHandler(async (req, res) => {
+  const user = await UserModel.findById(req.user._id);
+  if (!user) throw new ApiError(404, "User not found");
+
+  const skills = user.skills || [];
+
+  const organizations = await Organization.find({
+    isProfileCompleted: true,
+    isBlocked: false,
+    isActive: true,
+    $or: [
+      { industry: { $in: skills } },
+      { tags: { $in: skills } }
+    ]
+  })
+    .select("name tagline logo industry organizationType followers views tags")
+    .limit(10);
+
+  res.status(200).json(new ApiResponse(200, organizations, "Recommended organizations fetched"));
+});
 
 // GET SINGLE ORGANIZATION + VIEW COUNT
 export const getOrganizationById = asyncHandler(async (req, res) => {
-
   const org = await Organization.findById(req.params.id);
 
   if (!org) throw new ApiError(404, "Organization not found");
 
   // ATOMIC VIEW INCREMENT
-  await Organization.findByIdAndUpdate(
-    org._id,
-    { $inc: { views: 1 } }
-  );
+  await Organization.findByIdAndUpdate(org._id, { $inc: { views: 1 } });
 
-  res.status(200).json(
-    new ApiResponse(200, org, "Fetched")
-  );
+  res.status(200).json(new ApiResponse(200, org, "Fetched"));
 });
-
 
 // UPDATE ORGANIZATION
 export const updateOrganization = asyncHandler(async (req, res) => {
-
   const org = await Organization.findById(req.params.id);
 
   if (!org) throw new ApiError(404, "Not found");
 
-  if (org.createdBy.toString() !== req.user._id.toString()) {
+  if (org.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not authorized");
   }
 
   const allowedFields = [
-    "name", "tagline", "tags", "overview",
-    "culture", "perks"
+    "name",
+    "tagline",
+    "tags",
+    "overview",
+    "culture",
+    "perks",
+    "email",
+    "phone",
+    "website",
+    "industry",
   ];
 
   // SAFE UPDATE - Update only allowed fields
-  Object.keys(req.body).forEach(key => {
+  Object.keys(req.body).forEach((key) => {
     if (allowedFields.includes(key)) {
       org[key] = req.body[key];
     }
@@ -132,20 +428,16 @@ export const updateOrganization = asyncHandler(async (req, res) => {
 
   await org.save();
 
-  res.status(200).json(
-    new ApiResponse(200, org, "Updated")
-  );
+  res.status(200).json(new ApiResponse(200, org, "Updated"));
 });
-
 
 // DELETE ORGANIZATION
 export const deleteOrganization = asyncHandler(async (req, res) => {
-
   const org = await Organization.findById(req.params.id);
 
   if (!org) throw new ApiError(404, "Not found");
 
-  if (org.createdBy.toString() !== req.user._id.toString()) {
+  if (org.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not authorized");
   }
 
@@ -155,83 +447,71 @@ export const deleteOrganization = asyncHandler(async (req, res) => {
 
   await org.deleteOne(); // cascade handled in model
 
-  res.status(200).json(
-    new ApiResponse(200, {}, "Organization deleted")
-  );
+  res.status(200).json(new ApiResponse(200, {}, "Organization deleted"));
 });
-
 
 // UPLOAD LOGO
 export const uploadLogo = asyncHandler(async (req, res) => {
-
   if (!req.file) throw new ApiError(400, "No file uploaded");
 
   const org = await Organization.findById(req.params.id);
 
   if (!org) throw new ApiError(404, "Not found");
 
-  if (org.createdBy.toString() !== req.user._id.toString()) {
+  if (org.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not authorized");
   }
 
   await safeDelete(org.logo?.public_id);
 
   const uploaded = await cloudinary.uploader.upload(req.file.path, {
-    folder: "naukaa/org/logo"
+    folder: "naukaa/org/logo",
   });
 
   org.logo = {
     url: uploaded.secure_url,
-    public_id: uploaded.public_id
+    public_id: uploaded.public_id,
   };
 
   await org.save();
 
   fs.unlinkSync(req.file.path);
 
-  res.status(200).json(
-    new ApiResponse(200, org.logo, "Logo updated")
-  );
+  res.status(200).json(new ApiResponse(200, org.logo, "Logo updated"));
 });
-
 
 // UPLOAD COVER IMAGE
 export const uploadCoverImage = asyncHandler(async (req, res) => {
-
   if (!req.file) throw new ApiError(400, "No file uploaded");
 
   const org = await Organization.findById(req.params.id);
 
   if (!org) throw new ApiError(404, "Not found");
 
-  if (org.createdBy.toString() !== req.user._id.toString()) {
+  if (org.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not authorized");
   }
 
   await safeDelete(org.coverImage?.public_id);
 
   const uploaded = await cloudinary.uploader.upload(req.file.path, {
-    folder: "naukaa/org/cover"
+    folder: "naukaa/org/cover",
   });
 
   org.coverImage = {
     url: uploaded.secure_url,
-    public_id: uploaded.public_id
+    public_id: uploaded.public_id,
   };
 
   await org.save();
 
   fs.unlinkSync(req.file.path);
 
-  res.status(200).json(
-    new ApiResponse(200, org.coverImage, "Cover updated")
-  );
+  res.status(200).json(new ApiResponse(200, org.coverImage, "Cover updated"));
 });
-
 
 // FOLLOW ORGANIZATION
 export const followOrganization = asyncHandler(async (req, res) => {
-
   const org = await Organization.findById(req.params.id);
 
   if (!org) throw new ApiError(404, "Organization not found");
@@ -239,31 +519,64 @@ export const followOrganization = asyncHandler(async (req, res) => {
   if (!org.followers.includes(req.user._id)) {
     org.followers.push(req.user._id);
     await org.save();
-  }else{
+  } else {
     throw new ApiError(400, "Already following");
   }
 
-  res.status(200).json(
-    new ApiResponse(200, {}, "Followed")
-  );
+  res.status(200).json(new ApiResponse(200, {}, "Followed"));
 });
-
 
 // UNFOLLOW ORGANIZATION
 export const unfollowOrganization = asyncHandler(async (req, res) => {
-
   const org = await Organization.findById(req.params.id);
 
   if (!org) throw new ApiError(404, "Organization not found");
 
-  // return a new array of followers excluding the current user
   org.followers = org.followers.filter(
-    id => id.toString() !== req.user._id.toString()
+    (follower) => follower.toString() !== req.user._id.toString()
   );
 
   await org.save();
 
-  res.status(200).json(
-    new ApiResponse(200, {}, "Unfollowed")
+  res.status(200).json(new ApiResponse(200, {}, "Unfollowed"));
+});
+
+// REMOVE TEAM MEMBER
+export const removeMember = asyncHandler(async (req, res) => {
+  const { id, memberId } = req.params;
+
+  const org = await Organization.findById(id);
+  if (!org) throw new ApiError(404, "Organization not found");
+
+  if (org.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Only owners can remove members");
+  }
+
+  // Remove member from array
+  org.members = org.members.filter(
+    (member) => member.user.toString() !== memberId
   );
+
+  await org.save();
+
+  res.status(200).json(new ApiResponse(200, {}, "Member removed successfully"));
+});
+
+// GET MEMBER ACTIVITY (JOBS POSTED)
+export const getMemberActivity = asyncHandler(async (req, res) => {
+  const { id, memberId } = req.params;
+
+  const org = await Organization.findById(id);
+  if (!org) throw new ApiError(404, "Organization not found");
+
+  if (org.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Only owners can view member activity");
+  }
+
+  const jobs = await mongoose.model("Job").find({
+    company: id,
+    postedBy: memberId
+  }).sort({ createdAt: -1 });
+
+  res.status(200).json(new ApiResponse(200, jobs, "Member activity fetched"));
 });

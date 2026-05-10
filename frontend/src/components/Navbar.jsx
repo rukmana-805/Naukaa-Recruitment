@@ -26,6 +26,7 @@ const Navbar = () => {
 
   const navLinks = [
     { to: '/jobs', label: 'Browse Jobs' },
+    { to: '/companies', label: 'Companies' },
     { to: '/pricing', label: 'Pricing' },
   ];
 
@@ -138,7 +139,7 @@ const Navbar = () => {
                               <UserIcon className="w-4 h-4 text-gray-400" />
                               My Profile
                             </Link>
-                            {user?.role === 'recruiter' && (
+                            {(user?.role === 'recruiter' || user?.role === 'owner') && (
                               <Link
                                 to="/recruiter"
                                 onClick={() => setProfileOpen(false)}

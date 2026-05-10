@@ -96,7 +96,7 @@ const ApplicationsManager = () => {
       ) : (
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Application list */}
-          <div className="lg:col-span-2 space-y-2">
+          <div className="lg:col-span-2 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
             {applications.map((app, i) => (
               <motion.button
                 key={app._id}
@@ -132,7 +132,7 @@ const ApplicationsManager = () => {
                 key={selected._id}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="card p-6 sticky top-20"
+                className="card p-6 sticky top-20 max-h-[calc(100vh-150px)] overflow-y-auto custom-scrollbar"
               >
                 {/* Applicant header */}
                 <div className="flex items-start gap-4 mb-6 pb-5 border-b border-gray-100">
