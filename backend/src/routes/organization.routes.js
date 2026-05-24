@@ -19,6 +19,7 @@ import {
   updateCompanyCertificate,
   updateCompanyDetails,
   removeMember,
+  deleteRecruiter,
   getRecommendedOrganizations,
   getMemberActivity,
   getOrganizationStats
@@ -76,6 +77,7 @@ router.patch(
 );
 
 router.delete("/:id/member/:memberId", verifyUser, isOwner, removeMember);
+router.delete("/:id/recruiters/:memberId", verifyUser, isOwner, deleteRecruiter);
 router.get("/:id/member/:memberId/activity", verifyUser, isOwner, getMemberActivity);
 router.get("/:id/stats", verifyUser, getOrganizationStats);
 

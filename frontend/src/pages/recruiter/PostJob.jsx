@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { PlusIcon, TrashIcon, ArrowLeftIcon } from 'lucide-react';
+import { PlusIcon, TrashIcon, ArrowLeftIcon, AlertCircleIcon, XCircleIcon } from 'lucide-react';
 import { jobService } from '../../services/job.service';
 import { EMPLOYMENT_TYPES } from '../../utils/constants';
 import { getErrorMessage } from '../../utils/helpers';
@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { PageLoader } from '../../components/Skeleton';
+import useAuthStore from '../../store/authStore';
 
 const schema = z.object({
   title: z.string().min(3, 'Job title is required'),
@@ -35,6 +36,9 @@ const PostJob = () => {
   const [responsibilities, setResponsibilities] = useState(['']);
   const [questions, setQuestions] = useState([]);
   const [checkingOrg, setCheckingOrg] = useState(true);
+  const [orgStatus, setOrgStatus] = useState('VERIFIED'); // 'PENDING', 'VERIFIED', 'REJECTED'
+  const [companyName, setCompanyName] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     const verifyOrg = async () => {
@@ -51,6 +55,11 @@ const PostJob = () => {
             toast.error('You are not connected to any organization. Please contact your administrator.');
             navigate('/recruiter');
           }
+        } else {
+          const company = organizations[0];
+          setOrgStatus(company.verificationStatus || 'PENDING');
+          setCompanyName(company.name);
+          setRejectionReason(company.rejectionReason || '');
         }
       } catch (err) {
         toast.error('Failed to verify organization status');
@@ -75,6 +84,52 @@ const PostJob = () => {
   });
 
   if (checkingOrg) return <PageLoader />;
+
+  if (orgStatus !== 'VERIFIED') {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card p-10 text-center border-dashed border-2 flex flex-col items-center justify-center space-y-6"
+        >
+          <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center">
+            {orgStatus === 'REJECTED' ? (
+              <XCircleIcon className="w-10 h-10 text-red-500 animate-bounce" />
+            ) : (
+              <AlertCircleIcon className="w-10 h-10 text-amber-500 animate-pulse" />
+            )}
+          </div>
+          
+          <div className="space-y-2 max-w-md">
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+              {orgStatus === 'REJECTED' ? 'Verification Rejected' : 'Verification Under Review'}
+            </h2>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              {orgStatus === 'REJECTED'
+                ? `Your organization "${companyName}" verification was rejected. You are not allowed to post jobs at this time.`
+                : `Your organization "${companyName}" is currently pending verification. The admin must review and verify your details before you can post jobs.`}
+            </p>
+          </div>
+
+          {orgStatus === 'REJECTED' && rejectionReason && (
+            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-xs text-red-800 text-left max-w-md w-full">
+              <span className="font-black">Reason for rejection:</span> {rejectionReason}
+            </div>
+          )}
+
+          <div className="flex gap-4 w-full max-w-sm pt-4">
+            <button type="button" onClick={() => navigate('/recruiter/organizations')} className="btn-primary flex-1 justify-center py-3">
+              Go to My Organization
+            </button>
+            <button type="button" onClick={() => navigate('/recruiter')} className="btn-secondary flex-1 justify-center py-3">
+              Back to Portal
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   const onSubmit = async (data) => {
     setLoading(true);

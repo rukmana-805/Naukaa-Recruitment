@@ -35,6 +35,13 @@ import ApplicationsManager from '../pages/recruiter/ApplicationsManager';
 import Organizations from '../pages/recruiter/Organizations';
 import CreateOrganization from '../pages/recruiter/CreateOrganization';
 
+// Admin pages
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import AdminCompanies from '../pages/admin/AdminCompanies';
+import AdminCompanyDetail from '../pages/admin/AdminCompanyDetail';
+import AdminJobSeekers from '../pages/admin/AdminJobSeekers';
+import AdminJobDetail from '../pages/admin/AdminJobDetail';
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -118,6 +125,48 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute requiredRole={["recruiter", "owner"]}>
               <CreateOrganization />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin routes */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/companies"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminCompanies />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/companies/:id"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminCompanyDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/jobs/:id"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminJobDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/job-seekers"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminJobSeekers />
             </ProtectedRoute>
           }
         />

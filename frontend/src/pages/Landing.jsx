@@ -92,7 +92,7 @@ const Landing = () => {
       {/* ── HERO ── */}
       <section className="relative bg-white pt-16 pb-20 lg:pt-24 lg:pb-28">
         {/* Background pattern */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-green-50 via-white to-white" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-green-50 via-white to-white" />
         <div className="absolute top-20 right-10 w-72 h-72 bg-green-100 rounded-full blur-3xl opacity-40" />
         <div className="absolute bottom-10 left-10 w-48 h-48 bg-emerald-100 rounded-full blur-3xl opacity-30" />
 

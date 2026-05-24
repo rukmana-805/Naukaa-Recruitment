@@ -4,6 +4,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import UserModel from "../models/User.model.js";
+import { sendNotificationToQueue } from "../queues/notification.producer.js";
 
 const createJob = asyncHandler(async (req, res) => {
   const {
@@ -35,6 +36,11 @@ const createJob = asyncHandler(async (req, res) => {
     throw new ApiError(404, "You must create or join an organization before posting jobs");
   }
 
+  // Verification Check
+  if (company.verificationStatus !== "VERIFIED") {
+    throw new ApiError(403, `Your company verification status is ${company.verificationStatus || 'PENDING'}. You cannot post jobs until it is verified by an admin.`);
+  }
+
   const job = await Job.create({
     title,
     description,
@@ -49,6 +55,25 @@ const createJob = asyncHandler(async (req, res) => {
     postedBy: req.user._id,
     expiresAt,
   });
+
+  // Admin Notification Milestones
+  try {
+    const totalJobsCount = await Job.countDocuments({ company: company._id });
+    if (totalJobsCount === 5 || totalJobsCount === 10 || totalJobsCount === 20 || totalJobsCount === 50 || totalJobsCount % 50 === 0) {
+      const admins = await UserModel.find({ role: "admin" });
+      for (const admin of admins) {
+        await sendNotificationToQueue({
+          userId: admin._id,
+          title: "High Volume Job Posting",
+          message: `Company "${company.name}" has successfully posted ${totalJobsCount} jobs.`,
+          type: "SYSTEM",
+          data: { companyId: company._id, jobsCount: totalJobsCount }
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Error creating admin job post milestone notifications:", err.message);
+  }
 
   res.status(201).json(new ApiResponse(201, job, "Job created successfully"));
 });
@@ -150,7 +175,9 @@ const getMyJobs = asyncHandler(async (req, res) => {
 });
 
 const getJobById = asyncHandler(async (req, res) => {
-    const job = await Job.findById(req.params.id).populate("company", "name logo");
+    const job = await Job.findById(req.params.id)
+      .populate("company", "name logo")
+      .populate("postedBy", "fullName email");
 
     if (!job) {
       throw new ApiError(404, "Job not found");

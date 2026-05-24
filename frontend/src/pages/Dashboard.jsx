@@ -28,7 +28,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    if (user?.role === 'recruiter' || user?.role === 'owner') {
+    if (user?.role === 'admin') {
+      navigate('/admin/dashboard', { replace: true });
+    } else if (user?.role === 'recruiter' || user?.role === 'owner') {
       navigate('/recruiter', { replace: true });
     }
   }, [user, navigate]);

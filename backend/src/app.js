@@ -14,6 +14,7 @@ import paymentRoutes from "./routes/payment.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import { razorpayWebhook } from "./controllers/payment.controller.js";
 import inviteRoutes from "./routes/organization.invite.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/applications", applicationRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/invite", inviteRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Test route
 app.get("/", (req, res) => {

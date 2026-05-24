@@ -29,12 +29,23 @@ const recruiterNavItems = [
   { to: '/settings', icon: SettingsIcon, label: 'Settings' },
 ];
 
+const adminNavItems = [
+  { to: '/admin/dashboard', icon: LayoutDashboardIcon, label: 'Dashboard' },
+  { to: '/admin/companies', icon: BuildingIcon, label: 'Companies' },
+  { to: '/admin/job-seekers', icon: UsersIcon, label: 'Job Seekers' },
+  { to: '/notifications', icon: BellIcon, label: 'Notifications' },
+  { to: '/settings', icon: SettingsIcon, label: 'Settings' },
+];
+
 const Sidebar = ({ onClose }) => {
   const { user, logout } = useAuthStore();
   const { unreadCount } = useNotificationStore();
   const navigate = useNavigate();
 
   const getNavItems = () => {
+    if (user?.role === 'admin') {
+      return adminNavItems;
+    }
     if (user?.role === 'recruiter' || user?.role === 'owner') {
       const items = [...recruiterNavItems];
       if (user?.role === 'owner') {
@@ -84,7 +95,7 @@ const Sidebar = ({ onClose }) => {
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName}</p>
             <p className="text-xs text-green-600 font-medium capitalize">
-              {user?.role === 'owner' ? 'Owner' : user?.role === 'recruiter' ? 'Recruiter' : 'Job Seeker'}
+              {user?.role === 'owner' ? 'Owner' : user?.role === 'recruiter' ? 'Recruiter' : user?.role === 'admin' ? 'Admin' : 'Job Seeker'}
             </p>
           </div>
         </div>

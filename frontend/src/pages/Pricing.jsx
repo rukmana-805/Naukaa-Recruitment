@@ -153,7 +153,7 @@ const Pricing = () => {
           animate={{ opacity: 1, y: 0 }}
           className="card p-5 mb-8 border-2 border-green-300 bg-green-50 flex items-center gap-4"
         >
-          <CheckCircleIcon className="w-8 h-8 text-green-500 flex-shrink-0" />
+          <CheckCircleIcon className="w-8 h-8 text-green-500 shrink-0" />
           <div className="flex-1">
             <p className="font-semibold text-green-800">Your organization is on the Premium Plan! ✨</p>
             <p className="text-sm text-green-600">
@@ -185,7 +185,7 @@ const Pricing = () => {
           <ul className="space-y-3 mb-8">
             {FREE_FEATURES.map((f) => (
               <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
-                <CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <CheckCircleIcon className="w-4 h-4 text-green-500 shrink-0" />
                 {f}
               </li>
             ))}
@@ -230,7 +230,7 @@ const Pricing = () => {
             <ul className="space-y-3 mb-8">
               {PRO_FEATURES.map((f) => (
                 <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
-                  <CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <CheckCircleIcon className="w-4 h-4 text-green-500 shrink-0" />
                   {f}
                 </li>
               ))}

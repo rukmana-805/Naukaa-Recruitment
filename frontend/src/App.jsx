@@ -1,9 +1,30 @@
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { useEffect } from 'react';
 import AppRoutes from './routes/AppRoutes';
+import useAuthStore from './store/authStore';
+import { userService } from './services/user.service';
 import './index.css';
 
 const App = () => {
+  const { isAuthenticated, updateUser, logout } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const syncProfile = async () => {
+        try {
+          const res = await userService.getProfile();
+          updateUser(res.data.data);
+        } catch (err) {
+          if (err.response?.status === 401) {
+            logout();
+          }
+        }
+      };
+      syncProfile();
+    }
+  }, [isAuthenticated, updateUser, logout]);
+
   return (
     <BrowserRouter>
       <AppRoutes />

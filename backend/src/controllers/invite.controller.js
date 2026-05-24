@@ -24,6 +24,10 @@ const inviteRecruiter = asyncHandler(async (req, res) => {
     throw new ApiError(405, "You are not allowed to create recruiter");
   }
 
+  if (organization.verificationStatus !== "VERIFIED") {
+    throw new ApiError(403, "Your organization must be verified by the admin before you can invite recruiters");
+  }
+
   const inviteExist = await OrganizationInvite.findOne({
     email,
     organization: organization._id,

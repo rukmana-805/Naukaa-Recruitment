@@ -204,14 +204,21 @@ userSchema.pre("findOneAndDelete", async function () {
 
   if (!user) return;
 
-  // delete jobs if recruiter
+  // delete jobs and their applications if recruiter
   if (user.role === "recruiter") {
+    const jobs = await mongoose.model("Job").find({ postedBy: user._id });
+    const jobIds = jobs.map(j => j._id);
+
+    // Delete applications for those jobs
+    await mongoose.model("Application").deleteMany({ job: { $in: jobIds } });
+
+    // Delete the jobs
     await mongoose.model("Job").deleteMany({
       postedBy: user._id,
     });
   }
 
-  // delete applications
+  // delete applications submitted by this job seeker
   await mongoose.model("Application").deleteMany({
     applicant: user._id,
   });

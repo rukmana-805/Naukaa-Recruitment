@@ -7,6 +7,7 @@ import UserModel from "../models/User.model.js";
 import fs from "fs";
 import mongoose from "mongoose";
 import Application from "../models/Application.model.js";
+import { sendNotificationToQueue } from "../queues/notification.producer.js";
 
 // SLUG GENERATOR
 const generateSlug = (name) => {
@@ -68,15 +69,6 @@ export const createOrganization = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Fill correct Organization type");
   }
 
-  // const {
-  //   fullName, aadhaarNumber, panNumbeer,
-  //   hiringFor
-  // } = individualDetails;
-
-  // if(!fullName || !aadhaarNumber || !panNumbeer){
-  //   throw new ApiError(401, "Fill the details properly");
-  // }
-
   const user = await UserModel.findById(req.user._id);
 
   const organization = await Organization.create({
@@ -86,6 +78,22 @@ export const createOrganization = asyncHandler(async (req, res) => {
     phone,
     owner: user._id,
   });
+
+  // Notify Admins about new company registration
+  try {
+    const admins = await UserModel.find({ role: "admin" });
+    for (const admin of admins) {
+      await sendNotificationToQueue({
+        userId: admin._id,
+        title: "New Company Registered",
+        message: `A new company "${name}" (${organizationType}) has registered and is pending verification.`,
+        type: "SYSTEM",
+        data: { companyId: organization._id }
+      });
+    }
+  } catch (err) {
+    console.error("Error creating admin new company notification:", err.message);
+  }
 
   return res.status(201).json({
     success: true,
@@ -414,14 +422,18 @@ export const updateOrganization = asyncHandler(async (req, res) => {
   const allowedFields = [
     "name",
     "tagline",
+    "description",
     "tags",
-    "overview",
-    "culture",
-    "perks",
+    "industry",
     "email",
     "phone",
     "website",
-    "industry",
+    "socialLinks",
+    "address",
+    "companyDetails",
+    "individualDetails",
+    "culture",
+    "perks",
   ];
 
   // SAFE UPDATE - Update only allowed fields
@@ -578,6 +590,42 @@ export const removeMember = asyncHandler(async (req, res) => {
   await org.save();
 
   res.status(200).json(new ApiResponse(200, {}, "Member removed successfully"));
+});
+
+// DELETE TEAM MEMBER (RECRUITER) AND THEIR USER ACCOUNT
+export const deleteRecruiter = asyncHandler(async (req, res) => {
+  const { id, memberId } = req.params;
+
+  const org = await Organization.findById(id);
+  if (!org) throw new ApiError(404, "Organization not found");
+
+  if (org.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Only owners can delete recruiters");
+  }
+
+  const member = org.members.find(m => m.user.toString() === memberId);
+  if (!member) {
+    throw new ApiError(404, "Member not found in organization");
+  }
+
+  // Find recruiter user
+  const user = await UserModel.findById(memberId);
+  if (user && user.role !== "recruiter") {
+    throw new ApiError(400, "Only recruiters can be deleted. Cannot delete owners or admins.");
+  }
+
+  // Remove member from organization array
+  org.members = org.members.filter(
+    (m) => m.user.toString() !== memberId
+  );
+  await org.save();
+
+  // Completely delete the recruiter user account (triggers findOneAndDelete in User.model.js cascading to delete their jobs)
+  if (user) {
+    await UserModel.findByIdAndDelete(memberId);
+  }
+
+  res.status(200).json(new ApiResponse(200, {}, "Recruiter deleted successfully"));
 });
 
 // GET MEMBER ACTIVITY (JOBS POSTED)

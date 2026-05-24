@@ -36,7 +36,14 @@ const Login = () => {
       const { user, accessToken } = res.data.data;
       setAuth(user, accessToken);
       toast.success(`Welcome back, ${user.fullName.split(' ')[0]}!`);
-      navigate(user.role === 'recruiter' ? '/recruiter' : from, { replace: true });
+      
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (user.role === 'recruiter' || user.role === 'owner') {
+        navigate('/recruiter', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
