@@ -218,72 +218,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ── PRICING PREVIEW ── */}
-      <section className="py-20 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold text-green-600 uppercase tracking-widest">Pricing</span>
-            <h2 className="text-3xl font-bold text-gray-900 mt-2">Simple, transparent pricing</h2>
-          </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Free */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              className="card p-8"
-            >
-              <div className="badge-gray mb-4">Free</div>
-              <div className="text-4xl font-bold text-gray-900 mb-1">₹0</div>
-              <p className="text-gray-500 text-sm mb-6">Perfect to get started</p>
-              <ul className="space-y-3 mb-8">
-                {['Browse all jobs', 'Apply to 5 jobs/month', 'Basic profile', 'Email notifications'].map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
-                    <CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link to="/register" className="btn-secondary w-full justify-center">
-                Start Free
-              </Link>
-            </motion.div>
-
-            {/* Pro */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              className="card p-8 border-2 border-green-300 relative overflow-hidden"
-            >
-              <div className="absolute top-4 right-4 badge-green">Most Popular</div>
-              <div className="badge-green mb-4">Pro</div>
-              <div className="text-4xl font-bold text-gray-900 mb-1">
-                ₹999<span className="text-base font-normal text-gray-500">/mo</span>
-              </div>
-              <p className="text-gray-500 text-sm mb-6">For serious job seekers</p>
-              <ul className="space-y-3 mb-8">
-                {[
-                  'Unlimited job applications',
-                  'Priority in recruiter search',
-                  'AI-powered recommendations',
-                  'Application analytics',
-                  'Resume boost',
-                  'Priority support',
-                ].map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
-                    <CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link to="/pricing" className="btn-primary w-full justify-center">
-                Upgrade to Pro
-                <ArrowRightIcon className="w-4 h-4" />
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-      </section>
 
       {/* ── TESTIMONIALS ── */}
       <section className="py-20 bg-gray-50">

@@ -5,32 +5,38 @@ import { paymentService, loadRazorpayScript, RAZORPAY_KEY_ID } from '../services
 import useAuthStore from '../store/authStore';
 import { formatDate, getErrorMessage } from '../utils/helpers';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const FREE_FEATURES = [
-  'Browse all jobs',
-  'Apply to 5 jobs/month',
-  'Basic profile',
-  'Email notifications',
+  'Post up to 3 jobs',
+  'Basic applicant tracking',
+  '1 team member account',
+  'Standard email support',
 ];
 
 const PRO_FEATURES = [
-  'Unlimited job applications',
-  'Priority in recruiter search',
-  'AI-powered job recommendations',
-  'Application analytics dashboard',
-  'Resume ATS boost',
-  'Interview scheduling',
-  'Priority support',
-  'Early access to new features',
+  'Post unlimited jobs',
+  'Add custom recruiter questions',
+  'Up to 10 team member accounts',
+  'Detailed applicant analytics',
+  'Direct candidate messaging',
+  'Priority email & chat support',
+  'Early access to new recruitment features',
 ];
 
 const Pricing = () => {
   const { user, updateUser } = useAuthStore();
+  const navigate = useNavigate();
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(false);
   const [subLoading, setSubLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+
+  useEffect(() => {
+    if (user && user.role !== 'owner') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     const fetchSub = async () => {
@@ -137,7 +143,7 @@ const Pricing = () => {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
         <span className="text-xs font-bold text-green-600 uppercase tracking-widest">Pricing</span>
         <h1 className="text-4xl font-bold text-gray-900 mt-2">Simple, transparent pricing</h1>
-        <p className="text-gray-500 mt-3">Choose the plan that works for your job search</p>
+        <p className="text-gray-500 mt-3">Choose the plan that works for your organization</p>
       </motion.div>
 
       {/* Active subscription banner */}
@@ -149,7 +155,7 @@ const Pricing = () => {
         >
           <CheckCircleIcon className="w-8 h-8 text-green-500 flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-semibold text-green-800">You're on the Pro Plan! ✨</p>
+            <p className="font-semibold text-green-800">Your organization is on the Premium Plan! ✨</p>
             <p className="text-sm text-green-600">
               Active until {formatDate(subscription.endDate)}
             </p>
@@ -174,7 +180,7 @@ const Pricing = () => {
         >
           <div className="badge-gray mb-4">Free</div>
           <div className="text-5xl font-bold text-gray-900 mb-1">₹0</div>
-          <p className="text-gray-500 text-sm mb-6">Get started for free, forever</p>
+          <p className="text-gray-500 text-sm mb-6">Start posting jobs for free, forever</p>
 
           <ul className="space-y-3 mb-8">
             {FREE_FEATURES.map((f) => (
@@ -213,13 +219,13 @@ const Pricing = () => {
 
           <div className="relative">
             <div className="flex items-center gap-2 mb-4">
-              <span className="badge-green">Pro</span>
+              <span className="badge-green">Premium</span>
               <span className="badge bg-amber-100 text-amber-700">Most Popular</span>
             </div>
             <div className="text-5xl font-bold text-gray-900 mb-1">
               ₹999<span className="text-xl font-normal text-gray-500">/mo</span>
             </div>
-            <p className="text-gray-500 text-sm mb-6">Everything in Free, plus powerful extras</p>
+            <p className="text-gray-500 text-sm mb-6">Everything in Free, plus powerful recruiting tools</p>
 
             <ul className="space-y-3 mb-8">
               {PRO_FEATURES.map((f) => (
@@ -251,7 +257,7 @@ const Pricing = () => {
                 ) : (
                   <>
                     <CreditCardIcon className="w-4 h-4" />
-                    Upgrade to Pro — ₹999/mo
+                    Upgrade to Premium — ₹999/mo
                     <ArrowRightIcon className="w-4 h-4" />
                   </>
                 )}
@@ -275,9 +281,9 @@ const Pricing = () => {
         <h2 className="font-bold text-gray-900 text-xl mb-6">Frequently Asked Questions</h2>
         <div className="space-y-5">
           {[
-            { q: 'Can I cancel anytime?', a: 'Yes! You can cancel your Pro subscription at any time from this page. No questions asked.' },
+            { q: 'Can I cancel anytime?', a: 'Yes! You can cancel your Premium subscription at any time from this page. No questions asked.' },
             { q: 'Is the payment secure?', a: 'All payments are processed through Razorpay, India\'s most trusted payment gateway. We never store your card details.' },
-            { q: 'What happens after I upgrade?', a: 'Your plan is activated instantly after payment. You\'ll get access to all Pro features immediately.' },
+            { q: 'What happens after I upgrade?', a: 'Your plan is activated instantly after payment. You\'ll get access to all Premium features immediately.' },
             { q: 'Do you offer refunds?', a: 'We offer a 7-day refund policy if you\'re not satisfied. Contact our support team.' },
           ].map((faq) => (
             <div key={faq.q}>

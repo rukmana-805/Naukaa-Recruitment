@@ -16,7 +16,6 @@ const userNavItems = [
   { to: '/applications', icon: FileTextIcon, label: 'My Applications' },
   { to: '/saved-jobs', icon: BookmarkIcon, label: 'Saved Jobs' },
   { to: '/profile', icon: UserIcon, label: 'My Profile' },
-  { to: '/pricing', icon: CreditCardIcon, label: 'Upgrade Plan' },
   { to: '/notifications', icon: BellIcon, label: 'Notifications' },
   { to: '/settings', icon: SettingsIcon, label: 'Settings' },
 ];
@@ -35,7 +34,18 @@ const Sidebar = ({ onClose }) => {
   const { unreadCount } = useNotificationStore();
   const navigate = useNavigate();
 
-  const navItems = (user?.role === 'recruiter' || user?.role === 'owner') ? recruiterNavItems : userNavItems;
+  const getNavItems = () => {
+    if (user?.role === 'recruiter' || user?.role === 'owner') {
+      const items = [...recruiterNavItems];
+      if (user?.role === 'owner') {
+        items.splice(4, 0, { to: '/pricing', icon: CreditCardIcon, label: 'Upgrade Plan' });
+      }
+      return items;
+    }
+    return userNavItems;
+  };
+
+  const navItems = getNavItems();
 
   const handleLogout = async () => {
     await logout();
@@ -73,7 +83,9 @@ const Sidebar = ({ onClose }) => {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName}</p>
-            <p className="text-xs text-green-600 font-medium capitalize">{user?.plan === 'paid' ? '✨ Pro' : user?.role}</p>
+            <p className="text-xs text-green-600 font-medium capitalize">
+              {user?.role === 'owner' ? 'Owner' : user?.role === 'recruiter' ? 'Recruiter' : 'Job Seeker'}
+            </p>
           </div>
         </div>
       </div>

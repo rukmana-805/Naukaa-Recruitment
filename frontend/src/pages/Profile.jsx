@@ -752,8 +752,8 @@ const Profile = () => {
             </div>
             <h2 className="font-bold text-gray-900">{user?.fullName}</h2>
             <p className="text-sm text-gray-500 mt-0.5">{user?.email}</p>
-            <span className={`inline-flex mt-2 badge ${user?.plan === 'paid' ? 'badge-green' : 'badge-gray'}`}>
-              {user?.plan === 'paid' ? '✨ Pro' : 'Free Plan'}
+            <span className="inline-flex mt-2 badge badge-gray capitalize">
+              {user?.role === 'user' ? 'Job Seeker' : user?.role === 'owner' ? 'Owner' : user?.role}
             </span>
 
             {/* Completion */}

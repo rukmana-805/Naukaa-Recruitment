@@ -2,6 +2,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import Payment from "../models/payment.model.js";
 import Subscription from "../models/Subscrption.model.js";
 import UserModel from "../models/User.model.js";
+import Organization from "../models/Organization.model.js";
 import ApiError from "../utils/ApiError.js";
 import { verifyRazorpaySignature } from "../utils/verifySignature.js";
 import razorpay from "../config/razorpay.js";
@@ -131,6 +132,21 @@ const verifyPayment = asyncHandler(async (req, res) => {
     subscription: subscription._id,
   });
 
+  // 9) update organization subscription if owner
+  if (req.user.role === "owner") {
+    await Organization.findOneAndUpdate(
+      { owner: req.user._id },
+      {
+        $set: {
+          "subscription.plan": "PREMIUM",
+          "subscription.startDate": start,
+          "subscription.endDate": end,
+          "subscription.isActive": true,
+        }
+      }
+    );
+  }
+
   return res.status(200).json({
     success: true,
     message: "Payment verified & subscription activated",
@@ -200,6 +216,21 @@ const razorpayWebhook = async (req, res) => {
       plan: "paid",
       subscription: subscription._id,
     });
+
+    const user = await UserModel.findById(payment.user);
+    if (user?.role === 'owner') {
+      await Organization.findOneAndUpdate(
+        { owner: user._id },
+        {
+          $set: {
+            "subscription.plan": "PREMIUM",
+            "subscription.startDate": subscription.startDate,
+            "subscription.endDate": subscription.endDate,
+            "subscription.isActive": true,
+          }
+        }
+      );
+    }
 
     try {
       // console.log("Enqueuing notification and email for payment success...");
@@ -351,6 +382,18 @@ const cancelSubscription = asyncHandler(async (req, res) => {
     plan: "free",
     subscription: null, // IMPORTANT
   });
+
+  if (req.user.role === "owner") {
+    await Organization.findOneAndUpdate(
+      { owner: req.user._id },
+      {
+        $set: {
+          "subscription.plan": "FREE",
+          "subscription.isActive": false,
+        }
+      }
+    );
+  }
 
   res.json({ message: "Subscription cancelled" });
 });

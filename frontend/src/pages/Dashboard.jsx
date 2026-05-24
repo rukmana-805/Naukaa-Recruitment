@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   BriefcaseIcon, FileTextIcon, TrendingUpIcon, CreditCardIcon,
-  ArrowRightIcon, CheckCircleIcon, ClockIcon, XCircleIcon,
+  ArrowRightIcon, CheckCircleIcon, ClockIcon, XCircleIcon, BookmarkIcon,
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import { applicationService } from '../services/application.service';
@@ -69,12 +69,12 @@ const Dashboard = () => {
       sub: `${applications.filter((a) => a.status === 'shortlisted').length} shortlisted`,
     },
     {
-      label: 'Active Plan',
-      value: user?.plan === 'paid' ? 'Pro ✨' : 'Free',
-      icon: CreditCardIcon,
+      label: 'Saved Jobs',
+      value: user?.savedJobs?.length || 0,
+      icon: BookmarkIcon,
       color: 'text-green-600',
       bg: 'bg-green-50',
-      sub: user?.plan === 'paid' ? 'Unlimited applies' : '5 applies/month',
+      sub: 'Saved for later review',
     },
     {
       label: 'Interviews',
@@ -195,40 +195,6 @@ const Dashboard = () => {
 
         {/* Right column */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Subscription card */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className={`card p-5 ${user?.plan === 'paid' ? 'border-green-300 border-2' : ''}`}
-          >
-            {user?.plan === 'paid' ? (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="badge-green">Pro Plan ✨</span>
-                </div>
-                <p className="text-lg font-bold text-gray-900">You're on Pro!</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Unlimited applications, priority search ranking, and more.
-                </p>
-                {subscription?.endDate && (
-                  <p className="text-xs text-green-600 mt-2 font-medium">
-                    Renews {formatRelativeDate(subscription.endDate)}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div>
-                <p className="text-sm font-semibold text-gray-900 mb-1">Upgrade to Pro</p>
-                <p className="text-xs text-gray-500 mb-4">
-                  Unlock unlimited applications and AI-powered recommendations.
-                </p>
-                <Link to="/pricing" className="btn-primary w-full justify-center">
-                  Upgrade — ₹999/mo
-                </Link>
-              </div>
-            )}
-          </motion.div>
 
           {/* Quick actions */}
           <motion.div

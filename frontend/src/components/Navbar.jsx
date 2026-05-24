@@ -24,11 +24,21 @@ const Navbar = () => {
     navigate('/');
   };
 
-  const navLinks = [
-    { to: '/jobs', label: 'Browse Jobs' },
-    { to: '/companies', label: 'Companies' },
-    { to: '/pricing', label: 'Pricing' },
-  ];
+  const getNavLinks = () => {
+    if (isAuthenticated && user?.role !== 'owner') {
+      return [
+        { to: '/jobs', label: 'Browse Jobs' },
+        { to: '/companies', label: 'Companies' },
+      ];
+    }
+    return [
+      { to: '/jobs', label: 'Browse Jobs' },
+      { to: '/companies', label: 'Companies' },
+      { to: '/pricing', label: 'Pricing' },
+    ];
+  };
+
+  const navLinks = getNavLinks();
 
   const isActive = (path) => location.pathname === path;
 

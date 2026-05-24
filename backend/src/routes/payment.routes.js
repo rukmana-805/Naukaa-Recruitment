@@ -9,12 +9,13 @@ import {
 } from "../controllers/payment.controller.js";
 
 import verifyUser from "../middlewares/auth.middleware.js";
+import isOwner from "../middlewares/isOwner.middleware.js";
 
 const router = express.Router();
 
 // PAYMENT
-router.post("/create-order", verifyUser, createOrder);
-router.post("/verify", verifyUser, verifyPayment);
+router.post("/create-order", verifyUser, isOwner, createOrder);
+router.post("/verify", verifyUser, isOwner, verifyPayment);
 
 // router.post(
 //   "/webhook",
@@ -22,11 +23,11 @@ router.post("/verify", verifyUser, verifyPayment);
 //   razorpayWebhook
 // );
 
-router.post("/retry", verifyUser, retryPayment);
-router.post("/fail", verifyUser, markPaymentFailed);
+router.post("/retry", verifyUser, isOwner, retryPayment);
+router.post("/fail", verifyUser, isOwner, markPaymentFailed);
 
 // SUBSCRIPTION
-router.get("/subscription/me", verifyUser, getMySubscription);
-router.post("/subscription/cancel", verifyUser, cancelSubscription);
+router.get("/subscription/me", verifyUser, isOwner, getMySubscription);
+router.post("/subscription/cancel", verifyUser, isOwner, cancelSubscription);
 
 export default router;

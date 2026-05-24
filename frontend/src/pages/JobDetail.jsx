@@ -243,7 +243,23 @@ const JobDetail = () => {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => hasQuestions ? setShowApplyModal(true) : handleApply()}
+                  onClick={() => {
+                    if (!user) {
+                      toast.error('Please sign in to apply');
+                      navigate('/login', { state: { from: location } });
+                      return;
+                    }
+                    if (!user?.resume?.url) {
+                      toast.error('Please upload your resume before applying');
+                      navigate('/profile');
+                      return;
+                    }
+                    if (hasQuestions) {
+                      setShowApplyModal(true);
+                    } else {
+                      handleApply();
+                    }
+                  }}
                   disabled={applying || job.status === 'closed'}
                   className="btn-primary w-full justify-center py-3 mb-3"
                 >
