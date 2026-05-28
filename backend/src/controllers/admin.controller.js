@@ -2,7 +2,8 @@ import User from "../models/User.model.js";
 import Organization from "../models/Organization.model.js";
 import Job from "../models/Job.model.js";
 import Application from "../models/Application.model.js";
-import Payment from "../models/payment.model.js";
+import Payment from "../models/Payment.model.js";
+import SubscriptionPlan from "../models/SubscriptionPlan.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -117,11 +118,17 @@ export const getCompanyById = asyncHandler(async (req, res) => {
     .populate("postedBy", "fullName email")
     .sort({ createdAt: -1 });
 
+  // Fetch payment history for this owner
+  const payments = await Payment.find({ user: org.owner?._id, status: "success" })
+    .populate("plan")
+    .sort({ createdAt: -1 });
+
   res.status(200).json(
     new ApiResponse(200, {
       organization: org,
       recruiters,
       jobs,
+      payments,
     }, "Organization details fetched successfully")
   );
 });
@@ -282,4 +289,103 @@ export const deleteJob = asyncHandler(async (req, res) => {
   res.status(200).json(
     new ApiResponse(200, {}, "Job and associated applications deleted successfully")
   );
+});
+
+// GET ALL SUBSCRIPTION PLANS (ADMIN)
+export const getPlans = asyncHandler(async (req, res) => {
+  const plans = await SubscriptionPlan.find().sort({ price: 1 });
+  res.status(200).json(new ApiResponse(200, plans, "Plans fetched successfully"));
+});
+
+// CREATE SUBSCRIPTION PLAN (ADMIN)
+export const createPlan = asyncHandler(async (req, res) => {
+  const { name, price, durationDays, description, features, isActive, applicableFor } = req.body;
+
+  if (!name || price === undefined) {
+    throw new ApiError(400, "Name and price are required");
+  }
+
+  if (applicableFor && !["COMPANY", "INDIVIDUAL", "BOTH"].includes(applicableFor)) {
+    throw new ApiError(400, "applicableFor must be one of: COMPANY, INDIVIDUAL, BOTH");
+  }
+
+  const plan = await SubscriptionPlan.create({
+    name,
+    price,
+    durationDays,
+    description,
+    features: Array.isArray(features) ? features : features ? features.split(",").map(f => f.trim()).filter(Boolean) : [],
+    isActive,
+    applicableFor: applicableFor || "BOTH"
+  });
+
+  res.status(201).json(new ApiResponse(201, plan, "Plan created successfully"));
+});
+
+// UPDATE SUBSCRIPTION PLAN (ADMIN)
+export const updatePlan = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { name, price, durationDays, description, features, isActive, applicableFor } = req.body;
+
+  const plan = await SubscriptionPlan.findById(id);
+  if (!plan) {
+    throw new ApiError(404, "Plan not found");
+  }
+
+  if (applicableFor && !["COMPANY", "INDIVIDUAL", "BOTH"].includes(applicableFor)) {
+    throw new ApiError(400, "applicableFor must be one of: COMPANY, INDIVIDUAL, BOTH");
+  }
+
+  if (name !== undefined) plan.name = name;
+  if (price !== undefined) plan.price = price;
+  if (durationDays !== undefined) plan.durationDays = durationDays;
+  if (description !== undefined) plan.description = description;
+  if (features !== undefined) {
+    plan.features = Array.isArray(features) ? features : features.split(",").map(f => f.trim()).filter(Boolean);
+  }
+  if (isActive !== undefined) plan.isActive = isActive;
+  if (applicableFor !== undefined) plan.applicableFor = applicableFor;
+
+  await plan.save();
+
+  res.status(200).json(new ApiResponse(200, plan, "Plan updated successfully"));
+});
+
+// DELETE SUBSCRIPTION PLAN (ADMIN)
+export const deletePlan = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const plan = await SubscriptionPlan.findByIdAndDelete(id);
+
+  if (!plan) {
+    throw new ApiError(404, "Plan not found");
+  }
+
+  res.status(200).json(new ApiResponse(200, {}, "Plan deleted successfully"));
+});
+
+// GET ALL PAYMENTS WITH COMPANIES (ADMIN)
+export const getPayments = asyncHandler(async (req, res) => {
+  const { status } = req.query;
+  const query = {};
+
+  if (status && status !== "all") {
+    query.status = status;
+  }
+
+  const payments = await Payment.find(query)
+    .populate("user", "fullName email")
+    .populate("plan")
+    .sort({ createdAt: -1 });
+
+  const paymentsWithCompany = await Promise.all(
+    payments.map(async (payment) => {
+      const company = await Organization.findOne({ owner: payment.user?._id }).select("name organizationType");
+      return {
+        ...payment.toObject(),
+        company: company || null
+      };
+    })
+  );
+
+  res.status(200).json(new ApiResponse(200, paymentsWithCompany, "Payments fetched successfully"));
 });

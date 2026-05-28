@@ -1,6 +1,7 @@
 import Application from "../models/Application.model.js";
 import Job from "../models/Job.model.js";
 import UserModel from "../models/User.model.js";
+import mongoose from "mongoose";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
@@ -115,7 +116,11 @@ const getJobApplications = asyncHandler(async (req, res) => {
 
   if (!job) throw new ApiError(404, "Job not found");
 
-  if (job.postedBy.toString() !== req.user._id.toString()) {
+  const Organization = mongoose.model("Organization");
+  const company = await Organization.findById(job.company);
+  const isCompanyOwner = company && company.owner.toString() === req.user._id.toString();
+
+  if (job.postedBy.toString() !== req.user._id.toString() && !isCompanyOwner) {
     throw new ApiError(403, "Not authorized");
   }
 
@@ -129,10 +134,24 @@ const getJobApplications = asyncHandler(async (req, res) => {
 });
 
 const getRecruiterApplications = asyncHandler(async (req, res) => {
-  const jobs = await Job.find({ postedBy: req.user._id }).select("_id");
-  const jobIds = jobs.map((j) => j._id);
+  let query = {};
 
-  const applications = await Application.find({ job: { $in: jobIds } }).sort({
+  if (req.user.role === "owner") {
+    const Organization = mongoose.model("Organization");
+    const company = await Organization.findOne({ owner: req.user._id });
+    if (!company) {
+      return res.status(200).json(new ApiResponse(200, [], "No organization found"));
+    }
+    const jobs = await Job.find({ company: company._id }).select("_id");
+    const jobIds = jobs.map((j) => j._id);
+    query = { job: { $in: jobIds } };
+  } else {
+    const jobs = await Job.find({ postedBy: req.user._id }).select("_id");
+    const jobIds = jobs.map((j) => j._id);
+    query = { job: { $in: jobIds } };
+  }
+
+  const applications = await Application.find(query).sort({
     createdAt: -1,
   });
 
@@ -174,11 +193,14 @@ const updateApplicationStatus = asyncHandler(async (req, res) => {
 
   if (!application) throw new ApiError(404, "Application not found");
 
-  console.log(application.job.postedBy);
-
   const job = await Job.findById(application.job);
+  if (!job) throw new ApiError(404, "Job not found");
 
-  if (job.postedBy.toString() !== req.user._id.toString()) {
+  const Organization = mongoose.model("Organization");
+  const company = await Organization.findById(job.company);
+  const isCompanyOwner = company && company.owner.toString() === req.user._id.toString();
+
+  if (job.postedBy.toString() !== req.user._id.toString() && !isCompanyOwner) {
     throw new ApiError(403, "Not authorized");
   }
 
@@ -242,7 +264,16 @@ const applicationReviewUpdate = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Application not found");
   }
 
-  if (application.job.postedBy.toString() !== req.user._id.toString()) {
+  const job = await Job.findById(application.job);
+  if (!job) {
+    throw new ApiError(404, "Job not found");
+  }
+
+  const Organization = mongoose.model("Organization");
+  const company = await Organization.findById(job.company);
+  const isCompanyOwner = company && company.owner.toString() === req.user._id.toString();
+
+  if (job.postedBy.toString() !== req.user._id.toString() && !isCompanyOwner) {
     throw new ApiError(403, "Not authorized");
   }
 
@@ -281,7 +312,11 @@ const addNote = asyncHandler(async (req, res) => {
 
   if (!application) throw new ApiError(404, "Application not found");
 
-  if (application.job.postedBy.toString() !== req.user._id.toString()) {
+  const Organization = mongoose.model("Organization");
+  const company = await Organization.findById(application.job.company);
+  const isCompanyOwner = company && company.owner.toString() === req.user._id.toString();
+
+  if (application.job.postedBy.toString() !== req.user._id.toString() && !isCompanyOwner) {
     throw new ApiError(403, "Not authorized");
   }
 
@@ -299,7 +334,11 @@ const scheduleInterview = asyncHandler(async (req, res) => {
 
   if (!application) throw new ApiError(404, "Not found");
 
-  if (application.job.postedBy.toString() !== req.user._id.toString()) {
+  const Organization = mongoose.model("Organization");
+  const company = await Organization.findById(application.job.company);
+  const isCompanyOwner = company && company.owner.toString() === req.user._id.toString();
+
+  if (application.job.postedBy.toString() !== req.user._id.toString() && !isCompanyOwner) {
     throw new ApiError(403, "Not authorized");
   }
 

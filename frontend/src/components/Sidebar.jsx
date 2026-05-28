@@ -33,6 +33,8 @@ const adminNavItems = [
   { to: '/admin/dashboard', icon: LayoutDashboardIcon, label: 'Dashboard' },
   { to: '/admin/companies', icon: BuildingIcon, label: 'Companies' },
   { to: '/admin/job-seekers', icon: UsersIcon, label: 'Job Seekers' },
+  { to: '/admin/plans', icon: CreditCardIcon, label: 'Subscription Plans' },
+  { to: '/admin/payments', icon: FileTextIcon, label: 'Payment History' },
   { to: '/notifications', icon: BellIcon, label: 'Notifications' },
   { to: '/settings', icon: SettingsIcon, label: 'Settings' },
 ];
@@ -49,7 +51,9 @@ const Sidebar = ({ onClose }) => {
     if (user?.role === 'recruiter' || user?.role === 'owner') {
       const items = [...recruiterNavItems];
       if (user?.role === 'owner') {
-        items.splice(4, 0, { to: '/pricing', icon: CreditCardIcon, label: 'Upgrade Plan' });
+        items.splice(3, 0, { to: '/recruiter/members', icon: UsersIcon, label: 'Recruiters' });
+        items.splice(5, 0, { to: '/pricing', icon: CreditCardIcon, label: 'Upgrade Plan' });
+        items.splice(6, 0, { to: '/recruiter/payment-history', icon: FileTextIcon, label: 'Payment History' });
       }
       return items;
     }

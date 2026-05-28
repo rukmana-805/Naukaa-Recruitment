@@ -5,7 +5,9 @@ import {
   getMySubscription,
   cancelSubscription,
   retryPayment,
-  markPaymentFailed
+  markPaymentFailed,
+  getActivePlans,
+  getOwnerPaymentHistory
 } from "../controllers/payment.controller.js";
 
 import verifyUser from "../middlewares/auth.middleware.js";
@@ -27,7 +29,9 @@ router.post("/retry", verifyUser, isOwner, retryPayment);
 router.post("/fail", verifyUser, isOwner, markPaymentFailed);
 
 // SUBSCRIPTION
+router.get("/plans", getActivePlans);
 router.get("/subscription/me", verifyUser, isOwner, getMySubscription);
 router.post("/subscription/cancel", verifyUser, isOwner, cancelSubscription);
+router.get("/history", verifyUser, getOwnerPaymentHistory);
 
 export default router;

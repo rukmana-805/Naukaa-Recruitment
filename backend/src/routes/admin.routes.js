@@ -9,7 +9,12 @@ import {
   deleteCompany,
   getJobSeekers,
   deleteUser,
-  deleteJob
+  deleteJob,
+  getPlans,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  getPayments
 } from "../controllers/admin.controller.js";
 
 const router = Router();
@@ -34,5 +39,14 @@ router.delete("/users/:id", deleteUser);
 
 // Job Deletion
 router.delete("/jobs/:id", deleteJob);
+
+// Subscription Plans CRUD
+router.get("/plans", getPlans);
+router.post("/plans", createPlan);
+router.patch("/plans/:id", updatePlan);
+router.delete("/plans/:id", deletePlan);
+
+// Payment History
+router.get("/payments", getPayments);
 
 export default router;

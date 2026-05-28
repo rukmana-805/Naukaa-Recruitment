@@ -227,12 +227,24 @@ const RecruiterDashboard = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-gray-900 truncate group-hover:text-green-700 transition-colors">{job.title}</h3>
-                      <p className="text-xs text-gray-500 flex items-center gap-2 mt-1">
-                         <UsersIcon className="w-3.5 h-3.5" />
-                         {job.applicationsCount || 0} Applications
+                      <p className="text-xs text-gray-500 flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                         <span className="flex items-center gap-1">
+                           <UsersIcon className="w-3.5 h-3.5" />
+                           {job.applicationsCount || 0} Applications
+                         </span>
                          <span className="text-gray-300">|</span>
-                         <ClockIcon className="w-3.5 h-3.5" />
-                         Posted {formatRelativeDate(job.createdAt)}
+                         <span className="flex items-center gap-1">
+                           <ClockIcon className="w-3.5 h-3.5" />
+                           Posted {formatRelativeDate(job.createdAt)}
+                         </span>
+                         {isOwner && job.postedBy && (
+                           <>
+                             <span className="text-gray-300">|</span>
+                             <span className="px-2 py-0.5 bg-gray-100 text-gray-650 rounded-md text-[10px] font-bold">
+                               Posted by: {job.postedBy._id === user?._id ? 'You' : (job.postedBy.fullName || 'Recruiter')}
+                             </span>
+                           </>
+                         )}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -243,13 +255,24 @@ const RecruiterDashboard = () => {
                        >
                          <UsersIcon className="w-5 h-5" />
                        </Link>
-                       <button 
-                         onClick={() => handleDeleteJob(job._id)}
-                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                         title="Delete Job"
-                       >
-                         <TrashIcon className="w-5 h-5" />
-                       </button>
+                       {(isOwner || job.postedBy === user?._id || job.postedBy?._id === user?._id) && (
+                         <>
+                           <Link 
+                             to={`/recruiter/edit-job/${job._id}`}
+                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                             title="Edit Job"
+                           >
+                             <EditIcon className="w-5 h-5" />
+                           </Link>
+                           <button 
+                             onClick={() => handleDeleteJob(job._id)}
+                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                             title="Delete Job"
+                           >
+                             <TrashIcon className="w-5 h-5" />
+                           </button>
+                         </>
+                       )}
                     </div>
                   </motion.div>
                 ))}

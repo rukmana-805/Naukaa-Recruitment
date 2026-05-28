@@ -28,6 +28,11 @@ const inviteRecruiter = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Your organization must be verified by the admin before you can invite recruiters");
   }
 
+  const isPaid = organization.subscription?.isActive && organization.subscription.plan !== "FREE";
+  if (!isPaid) {
+    throw new ApiError(403, "Recruiter invitations are only allowed on paid plans. Please upgrade your plan.");
+  }
+
   const inviteExist = await OrganizationInvite.findOne({
     email,
     organization: organization._id,

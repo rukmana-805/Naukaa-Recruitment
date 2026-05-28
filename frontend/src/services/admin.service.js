@@ -17,4 +17,10 @@ export const adminService = {
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   
   deleteJob: (id) => api.delete(`/admin/jobs/${id}`),
+
+  getPlans: () => api.get('/admin/plans'),
+  createPlan: (data) => api.post('/admin/plans', data),
+  updatePlan: (id, data) => api.patch(`/admin/plans/${id}`, data),
+  deletePlan: (id) => api.delete(`/admin/plans/${id}`),
+  getPayments: (params) => api.get('/admin/payments', { params }),
 };

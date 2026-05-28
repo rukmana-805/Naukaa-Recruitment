@@ -13,6 +13,11 @@ const paymentSchema = new mongoose.Schema({
     required: true
   },
 
+  plan: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "SubscriptionPlan"
+  },
+
   currency: {
     type: String,
     default: "INR"

@@ -1,9 +1,12 @@
 import asyncHandler from "../utils/asyncHandler.js";
-import Payment from "../models/payment.model.js";
+import Payment from "../models/Payment.model.js";
 import Subscription from "../models/Subscrption.model.js";
+import jwt from "jsonwebtoken";
+import SubscriptionPlan from "../models/SubscriptionPlan.model.js";
 import UserModel from "../models/User.model.js";
 import Organization from "../models/Organization.model.js";
 import ApiError from "../utils/ApiError.js";
+import ApiResponse from "../utils/ApiResponse.js";
 import { verifyRazorpaySignature } from "../utils/verifySignature.js";
 import razorpay from "../config/razorpay.js";
 import { cleanupStaleCreatedPayments } from "../utils/paymentCleanup.js";
@@ -13,8 +16,32 @@ import { sendNotificationToQueue } from "../queues/notification.producer.js";
 import { EMAIL_TYPES } from "../constants/email.constants.js";
 
 const createOrder = asyncHandler(async (req, res) => {
-  // future: planId se price nikaalna
-  const amount = 999; // INR
+  const { planId } = req.body;
+  if (!planId) {
+    throw new ApiError(400, "Plan ID is required");
+  }
+
+  const org = await Organization.findOne({ owner: req.user._id });
+  if (!org) {
+    throw new ApiError(400, "Please register an organization profile first before purchasing a plan.");
+  }
+
+  if (org.verificationStatus !== "VERIFIED") {
+    throw new ApiError(403, `Subscription is only allowed for verified organizations. Current status: ${org.verificationStatus}.`);
+  }
+
+  const orgType = org.organizationType;
+
+  const plan = await SubscriptionPlan.findById(planId);
+  if (!plan || !plan.isActive) {
+    throw new ApiError(404, "Active subscription plan not found");
+  }
+
+  if (plan.applicableFor !== "BOTH" && plan.applicableFor !== orgType) {
+    throw new ApiError(400, `This plan is only available for ${plan.applicableFor.toLowerCase()} profiles.`);
+  }
+
+  const amount = plan.price;
 
   // idempotency-ish: same user ke recent "created" ko reuse kar sakte ho (optional)
   // const existing = await Payment.findOne({ user: req.user._id, status: "created" }).sort({ createdAt: -1 });
@@ -38,6 +65,7 @@ const createOrder = asyncHandler(async (req, res) => {
     amount,
     status: "created",
     razorpay_order_id: order.id,
+    plan: plan._id,
   });
 
   // 3) frontend ko minimal data
@@ -74,11 +102,14 @@ const verifyPayment = asyncHandler(async (req, res) => {
   }
 
   // 2) fetch payment doc
-  const payment = await Payment.findById(paymentId);
+  const payment = await Payment.findById(paymentId).populate("plan");
 
   if (!payment) {
     throw new ApiError(404, "Payment not found");
   }
+
+  const planName = payment.plan?.name || "Premium";
+  const durationDays = payment.plan?.durationDays || 30;
 
   // 3) idempotency (already processed?)
   if (payment.status === "success") {
@@ -115,11 +146,11 @@ const verifyPayment = asyncHandler(async (req, res) => {
   );
 
   const start = new Date();
-  const end = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const end = new Date(start.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
   const subscription = await Subscription.create({
     user: req.user._id,
-    plan: "paid",
+    plan: planName,
     startDate: start,
     endDate: end,
     status: "active",
@@ -133,18 +164,37 @@ const verifyPayment = asyncHandler(async (req, res) => {
   });
 
   // 9) update organization subscription if owner
+  let company = null;
   if (req.user.role === "owner") {
-    await Organization.findOneAndUpdate(
+    company = await Organization.findOneAndUpdate(
       { owner: req.user._id },
       {
         $set: {
-          "subscription.plan": "PREMIUM",
+          "subscription.plan": planName,
           "subscription.startDate": start,
           "subscription.endDate": end,
           "subscription.isActive": true,
         }
-      }
+      },
+      { new: true }
     );
+  }
+
+  // 10) Notify admin
+  try {
+    const admins = await UserModel.find({ role: "admin" });
+    const companyName = company ? company.name : "Individual";
+    for (const admin of admins) {
+      await sendNotificationToQueue({
+        userId: admin._id,
+        title: "New Subscription Plan Purchased",
+        message: `Company "${companyName}" (Owner: ${req.user.fullName}) has purchased "${planName}" plan for ₹${payment.amount}.`,
+        type: "SYSTEM",
+        data: { companyId: company?._id, paymentId: payment._id }
+      });
+    }
+  } catch (error) {
+    console.error("Failed to notify admin on payment:", error.message);
   }
 
   return res.status(200).json({
@@ -175,11 +225,13 @@ const razorpayWebhook = async (req, res) => {
 
     const payment = await Payment.findOne({
       razorpay_order_id: data.order_id,
-    });
+    }).populate("plan");
 
     if (!payment) return res.json({ ok: true });
 
     const userId = payment.user;
+    const planName = payment.plan?.name || "Premium";
+    const durationDays = payment.plan?.durationDays || 30;
 
     // Idempotency (already processed)
     if (payment.status === "success") {
@@ -205,9 +257,9 @@ const razorpayWebhook = async (req, res) => {
     // Create new subscription
     const subscription = await Subscription.create({
       user: payment.user,
-      plan: "paid",
+      plan: planName,
       startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * 86400000),
+      endDate: new Date(Date.now() + durationDays * 86400000),
       status: "active",
       payment: payment._id,
     });
@@ -218,18 +270,37 @@ const razorpayWebhook = async (req, res) => {
     });
 
     const user = await UserModel.findById(payment.user);
+    let company = null;
     if (user?.role === 'owner') {
-      await Organization.findOneAndUpdate(
+      company = await Organization.findOneAndUpdate(
         { owner: user._id },
         {
           $set: {
-            "subscription.plan": "PREMIUM",
+            "subscription.plan": planName,
             "subscription.startDate": subscription.startDate,
             "subscription.endDate": subscription.endDate,
             "subscription.isActive": true,
           }
-        }
+        },
+        { new: true }
       );
+    }
+
+    // Notify admins about purchase
+    try {
+      const admins = await UserModel.find({ role: "admin" });
+      const companyName = company ? company.name : "Individual";
+      for (const admin of admins) {
+        await sendNotificationToQueue({
+          userId: admin._id,
+          title: "New Subscription Plan Purchased",
+          message: `Company "${companyName}" (Owner: ${user?.fullName || 'N/A'}) has purchased "${planName}" plan for ₹${payment.amount}.`,
+          type: "SYSTEM",
+          data: { companyId: company?._id, paymentId: payment._id }
+        });
+      }
+    } catch (err) {
+      console.error("Failed to notify admin in webhook:", err.message);
     }
 
     try {
@@ -250,8 +321,6 @@ const razorpayWebhook = async (req, res) => {
       // console.log("Notification enqueued");
 
       // Email
-      const user = await UserModel.findById(payment.user);
-
       if (user?.email) {
         console.log("Enqueuing email to queue");
 
@@ -260,7 +329,7 @@ const razorpayWebhook = async (req, res) => {
           type: EMAIL_TYPES.PAYMENT_SUCCESS,
           payload: {
             name: user.fullName,
-            plan: "Pro Plan",
+            plan: planName,
             amount: payment.amount,
           },
         });
@@ -398,6 +467,47 @@ const cancelSubscription = asyncHandler(async (req, res) => {
   res.json({ message: "Subscription cancelled" });
 });
 
+const getActivePlans = asyncHandler(async (req, res) => {
+  let orgType = "BOTH";
+
+  // Optional authentication check
+  let token;
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const org = await Organization.findOne({ owner: decoded.id });
+      if (org) {
+        orgType = org.organizationType;
+      }
+    } catch (err) {
+      // Ignore token verification errors for guests/expired sessions
+    }
+  }
+
+  const filter = { isActive: true };
+  if (orgType !== "BOTH") {
+    filter.applicableFor = { $in: [orgType, "BOTH"] };
+  }
+
+  const plans = await SubscriptionPlan.find(filter).sort({ price: 1 });
+  res.status(200).json(plans);
+});
+
+const getOwnerPaymentHistory = asyncHandler(async (req, res) => {
+  const payments = await Payment.find({ user: req.user._id })
+    .populate("plan")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json(new ApiResponse(200, payments, "Payment history fetched successfully"));
+});
+
 export {
   createOrder,
   verifyPayment,
@@ -406,4 +516,6 @@ export {
   razorpayWebhook,
   retryPayment,
   markPaymentFailed,
+  getActivePlans,
+  getOwnerPaymentHistory,
 };

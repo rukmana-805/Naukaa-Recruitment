@@ -6,7 +6,7 @@ import {
   PlusCircleIcon, BuildingIcon, TrashIcon, UsersIcon, UserPlusIcon, 
   MailIcon, LinkIcon, EyeIcon, XIcon, ArrowRightIcon, AlertCircleIcon, 
   XCircleIcon, UserMinusIcon, MapPinIcon, GlobeIcon, AwardIcon, HashIcon, 
-  InfoIcon 
+  InfoIcon, BriefcaseIcon
 } from 'lucide-react';
 import { organizationService } from '../../services/organization.service';
 import api from '../../services/api';
@@ -519,11 +519,17 @@ const Organizations = () => {
                            </p>
                            <p className="text-xs text-gray-500 truncate">{member.user?.email || 'No email'}</p>
                            <p className="text-[10px] font-black text-gray-400 uppercase mt-1 tracking-widest">{member.role}</p>
+                           {member.role === 'recruiter' && typeof member.jobsCount !== 'undefined' && (
+                             <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1 font-medium">
+                               <BriefcaseIcon className="w-3.5 h-3.5 text-gray-400" />
+                               Jobs Posted: <span className="font-bold text-green-600">{member.jobsCount}</span>
+                             </p>
+                           )}
                         </div>
                         
                         {/* Member Actions (Visible to Organization Owner for recruiter members) */}
                         {isOwner && !isMemberOwner && (
-                          <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1.5 shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => viewActivity(member.user?._id)}
                               className="p-1.5 bg-white text-gray-600 hover:text-green-600 rounded-lg shadow-sm border border-gray-100 cursor-pointer"

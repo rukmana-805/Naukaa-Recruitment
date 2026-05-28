@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   MapPinIcon, BriefcaseIcon, DollarSignIcon, ClockIcon,
   BuildingIcon, ArrowLeftIcon, CheckCircleIcon, SendIcon, BookmarkIcon,
+  EditIcon, TrashIcon,
 } from 'lucide-react';
 import { jobService } from '../services/job.service';
 import { applicationService } from '../services/application.service';
@@ -110,6 +111,12 @@ const JobDetail = () => {
   const company = job.company;
   const hasQuestions = job.questions?.length > 0;
 
+  const isJobOwner = user && (
+    job.postedBy?._id === user._id || 
+    job.postedBy === user._id || 
+    (user.role === 'owner' && company?.owner === user._id)
+  );
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
       {/* Back */}
@@ -128,24 +135,72 @@ const JobDetail = () => {
           {/* Job header */}
           <div className="card p-6">
             <div className="flex items-start gap-4 mb-5">
-              <div className="w-14 h-14 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
-                {company?.logo?.url ? (
-                  <img src={company.logo.url} alt={company.name} className="w-full h-full object-cover" />
+              {company?._id ? (
+                <Link to={`/companies/${company._id}`} className="w-14 h-14 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden hover:border-green-200 transition-colors">
+                  {company?.logo?.url ? (
+                    <img src={company.logo.url} alt={company.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <BuildingIcon className="w-6 h-6 text-gray-400" />
+                  )}
+                </Link>
+              ) : (
+                <div className="w-14 h-14 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
+                  {company?.logo?.url ? (
+                    <img src={company.logo.url} alt={company.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <BuildingIcon className="w-6 h-6 text-gray-400" />
+                  )}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl font-bold text-gray-900 mb-1 truncate">{job.title}</h1>
+                {company?._id ? (
+                  <Link to={`/companies/${company._id}`} className="text-gray-500 hover:text-green-600 font-semibold transition-colors block truncate">
+                    {company?.name}
+                  </Link>
                 ) : (
-                  <BuildingIcon className="w-6 h-6 text-gray-400" />
+                  <p className="text-gray-500 truncate">{company?.name}</p>
                 )}
               </div>
-              <div className="flex-1">
-                <h1 className="text-xl font-bold text-gray-900 mb-1">{job.title}</h1>
-                <p className="text-gray-500">{company?.name}</p>
+              
+              <div className="flex items-center gap-2 shrink-0">
+                {isJobOwner && (
+                  <>
+                    <Link
+                      to={`/recruiter/edit-job/${job._id}`}
+                      className="p-2 text-blue-600 hover:bg-blue-50 border border-blue-100 rounded-lg transition-colors"
+                      title="Edit Job"
+                    >
+                      <EditIcon className="w-5 h-5" />
+                    </Link>
+                    <button
+                      onClick={async () => {
+                        if (window.confirm("Are you sure you want to delete this job? All applications will also be permanently removed.")) {
+                          try {
+                            await jobService.deleteJob(job._id);
+                            toast.success("Job deleted successfully");
+                            navigate("/recruiter");
+                          } catch (err) {
+                            toast.error(getErrorMessage(err));
+                          }
+                        }
+                      }}
+                      className="p-2 text-red-600 hover:bg-red-50 border border-red-100 rounded-lg transition-colors"
+                      title="Delete Job"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+                
+                <button
+                  onClick={toggleSaveJob}
+                  className={`p-2 rounded-lg transition-colors border ${isSaved ? 'text-green-500 bg-green-50 border-green-100' : 'text-gray-400 border-gray-100 hover:bg-gray-50'}`}
+                  title={isSaved ? "Unsave job" : "Save job"}
+                >
+                  <BookmarkIcon className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
+                </button>
               </div>
-              <button
-                onClick={toggleSaveJob}
-                className={`p-2 rounded-lg transition-colors border ${isSaved ? 'text-green-500 bg-green-50 border-green-100' : 'text-gray-400 border-gray-100 hover:bg-gray-50'}`}
-                title={isSaved ? "Unsave job" : "Save job"}
-              >
-                <BookmarkIcon className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
-              </button>
             </div>
 
             <div className="flex flex-wrap gap-3 text-sm text-gray-600">
@@ -304,24 +359,45 @@ const JobDetail = () => {
             <div className="card p-5">
               <h3 className="font-semibold text-gray-900 mb-3">About the Company</h3>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center">
-                  {company?.logo?.url ? (
-                    <img src={company.logo.url} alt={company.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <BuildingIcon className="w-4 h-4 text-gray-400" />
-                  )}
-                </div>
+                {company?._id ? (
+                  <Link to={`/companies/${company._id}`} className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 hover:border-green-200 transition-colors">
+                    {company?.logo?.url ? (
+                      <img src={company.logo.url} alt={company.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <BuildingIcon className="w-4 h-4 text-gray-400" />
+                    )}
+                  </Link>
+                ) : (
+                  <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center shrink-0">
+                    {company?.logo?.url ? (
+                      <img src={company.logo.url} alt={company.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <BuildingIcon className="w-4 h-4 text-gray-400" />
+                    )}
+                  </div>
+                )}
                 <div>
-                  <p className="font-medium text-sm text-gray-900">{company.name}</p>
-                  {company.overview?.website && (
-                    <a href={company.overview.website} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600 hover:underline">
+                  {company?._id ? (
+                    <Link to={`/companies/${company._id}`} className="font-medium text-sm text-gray-900 hover:text-green-600 transition-colors block">
+                      {company.name}
+                    </Link>
+                  ) : (
+                    <p className="font-medium text-sm text-gray-900">{company.name}</p>
+                  )}
+                  {(company.website || company.overview?.website) && (
+                    <a href={company.website || company.overview.website} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600 hover:underline">
                       Visit website
                     </a>
                   )}
                 </div>
               </div>
               {company.tagline && (
-                <p className="text-xs text-gray-500 italic">"{company.tagline}"</p>
+                <p className="text-xs text-gray-500 italic mb-3">"{company.tagline}"</p>
+              )}
+              {company?._id && (
+                <Link to={`/companies/${company._id}`} className="text-xs font-bold text-green-600 hover:text-green-700 flex items-center gap-1 mt-2 hover:underline">
+                  View Company Profile & Jobs →
+                </Link>
               )}
             </div>
           )}

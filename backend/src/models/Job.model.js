@@ -85,15 +85,19 @@ const jobSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-jobSchema.pre("findOneAndDelete", async function () {
-
-  const job = await this.model.findOne(this.getFilter());
-
+jobSchema.pre("deleteOne", { document: true, query: false }, async function () {
   await mongoose.model("Application").deleteMany({
-    job: job._id
+    job: this._id
   });
+});
 
-  // next();
+jobSchema.pre("findOneAndDelete", async function () {
+  const job = await this.model.findOne(this.getFilter());
+  if (job) {
+    await mongoose.model("Application").deleteMany({
+      job: job._id
+    });
+  }
 });
 
 // Indexing for efficient searching and filtering

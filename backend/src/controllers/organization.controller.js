@@ -343,7 +343,29 @@ export const getMyOrganizations = asyncHandler(async (req, res) => {
   .populate('members.user', 'fullName email')
   .sort({ createdAt: -1 });
 
-  res.status(200).json(new ApiResponse(200, orgs, "Fetched"));
+  const Job = mongoose.model("Job");
+  const orgsWithJobCounts = await Promise.all(
+    orgs.map(async (org) => {
+      const orgObj = org.toObject();
+      if (orgObj.organizationType === "COMPANY" && orgObj.members) {
+        orgObj.members = await Promise.all(
+          orgObj.members.map(async (member) => {
+            if (member.user && member.role === "recruiter") {
+              const count = await Job.countDocuments({
+                company: orgObj._id,
+                postedBy: member.user._id
+              });
+              return { ...member, jobsCount: count };
+            }
+            return member;
+          })
+        );
+      }
+      return orgObj;
+    })
+  );
+
+  res.status(200).json(new ApiResponse(200, orgsWithJobCounts, "Fetched"));
 });
 
 // GET ALL ORGANIZATIONS (PUBLIC)
@@ -369,7 +391,7 @@ export const getAllOrganizations = asyncHandler(async (req, res) => {
   }
 
   const organizations = await Organization.find(query)
-    .select("name tagline logo industry organizationType followers views")
+    .select("name tagline description tags industry organizationType logo coverImage website followers views companyDetails address")
     .sort({ createdAt: -1 });
 
   res.status(200).json(new ApiResponse(200, organizations, "Fetched all organizations"));
@@ -391,7 +413,7 @@ export const getRecommendedOrganizations = asyncHandler(async (req, res) => {
       { tags: { $in: skills } }
     ]
   })
-    .select("name tagline logo industry organizationType followers views tags")
+    .select("name tagline description tags industry organizationType logo coverImage website followers views companyDetails address")
     .limit(10);
 
   res.status(200).json(new ApiResponse(200, organizations, "Recommended organizations fetched"));

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeftIcon,
   BuildingIcon,
@@ -9,21 +8,12 @@ import {
   ExternalLinkIcon,
   FileTextIcon,
   TrashIcon,
-  UsersIcon,
-  BriefcaseIcon,
-  AlertCircleIcon,
-  XCircleIcon,
-  CheckCircleIcon,
-  CalendarIcon,
-  MapPinIcon,
-  DollarSignIcon,
-  ActivityIcon,
-  XIcon
+  AlertCircleIcon
 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
-import { getStatusBadgeClass } from '../../utils/helpers';
 import { PageLoader } from '../../components/Skeleton';
 import toast from 'react-hot-toast';
+
 
 const AdminCompanyDetail = () => {
   const { id } = useParams();
@@ -125,7 +115,7 @@ const AdminCompanyDetail = () => {
   if (loading) return <PageLoader />;
   if (!details) return null;
 
-  const { organization: org, recruiters, jobs } = details;
+  const { organization: org, recruiters, jobs, payments = [] } = details;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -385,6 +375,32 @@ const AdminCompanyDetail = () => {
                 <p className="font-bold text-gray-900 text-sm">{org.owner?.fullName}</p>
                 <p className="text-xs text-gray-500">{org.owner?.email} • {org.owner?.phone || 'No phone'}</p>
               </div>
+            </div>
+          </div>
+
+          {/* Subscription & Payment History */}
+          <div className="card p-6 space-y-4">
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b pb-2 flex justify-between">
+              <span>Subscription & Payment History</span>
+              <span className="badge bg-green-55 text-green-700 font-bold border border-green-200">({payments?.length || 0} purchases)</span>
+            </h3>
+
+            <div className="space-y-3">
+              {payments.map((payment) => (
+                <div key={payment._id} className="p-3.5 bg-gray-50 border border-gray-105 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <p className="font-bold text-gray-800">₹{payment.amount} — {payment.plan?.name || "Premium Plan"}</p>
+                    <p className="text-gray-400 text-[10px] mt-0.5">Purchased on {new Date(payment.createdAt).toLocaleDateString()} at {new Date(payment.createdAt).toLocaleTimeString()}</p>
+                    {payment.razorpay_payment_id && (
+                      <p className="text-[10px] text-gray-500 font-mono mt-0.5">Txn ID: {payment.razorpay_payment_id}</p>
+                    )}
+                  </div>
+                  <span className="badge-green capitalize">{payment.status}</span>
+                </div>
+              ))}
+              {(!payments || payments.length === 0) && (
+                <p className="text-xs text-gray-400 italic py-2">No subscription history recorded under this organization.</p>
+              )}
             </div>
           </div>
 

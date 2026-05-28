@@ -152,5 +152,42 @@ applicationSchema.pre("save", function () {
   }
 });
 
+const handleApplicationCascadeDelete = async (app) => {
+  if (!app) return;
+  try {
+    await mongoose.model("Job").findByIdAndUpdate(app.job, {
+      $inc: { applicationsCount: -1 }
+    });
+  } catch (err) {
+    console.error("Failed to decrement applicationsCount:", err.message);
+  }
+};
+
+applicationSchema.pre("deleteOne", { document: true, query: false }, async function () {
+  await handleApplicationCascadeDelete(this);
+});
+
+applicationSchema.pre("findOneAndDelete", async function () {
+  const app = await this.model.findOne(this.getFilter());
+  await handleApplicationCascadeDelete(app);
+});
+
+applicationSchema.pre("deleteMany", async function () {
+  const filter = this.getFilter();
+  // If we are deleting applications because of a job deletion, we don't need to decrement counts on a deleted job.
+  if (filter && (filter.job || filter.job?.$in)) {
+    return;
+  }
+  try {
+    const apps = await this.model.find(filter);
+    for (const app of apps) {
+      await mongoose.model("Job").findByIdAndUpdate(app.job, {
+        $inc: { applicationsCount: -1 }
+      });
+    }
+  } catch (err) {
+    console.error("Failed to decrement applicationsCount in deleteMany:", err.message);
+  }
+});
 
 export default mongoose.model("Application", applicationSchema);

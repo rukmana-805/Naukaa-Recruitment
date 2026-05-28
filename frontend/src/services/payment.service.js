@@ -1,12 +1,14 @@
 import api from './api';
 
 export const paymentService = {
-  createOrder: () => api.post('/payment/create-order'),
+  createOrder: (planId) => api.post('/payment/create-order', { planId }),
   verifyPayment: (data) => api.post('/payment/verify', data),
   getMySubscription: () => api.get('/payment/subscription/me'),
   cancelSubscription: () => api.post('/payment/subscription/cancel'),
   retryPayment: (paymentId) => api.post('/payment/retry', { paymentId }),
   markPaymentFailed: (razorpay_order_id) => api.post('/payment/fail', { razorpay_order_id }),
+  getActivePlans: () => api.get('/payment/plans'),
+  getPaymentHistory: () => api.get('/payment/history'),
 };
 
 export const loadRazorpayScript = () =>

@@ -12,6 +12,7 @@ import Jobs from '../pages/Jobs';
 import JobDetail from '../pages/JobDetail';
 import Pricing from '../pages/Pricing';
 import Companies from '../pages/Companies';
+import CompanyDetail from '../pages/CompanyDetail';
 
 // Auth pages
 import Login from '../pages/Login';
@@ -34,6 +35,8 @@ import PostJob from '../pages/recruiter/PostJob';
 import ApplicationsManager from '../pages/recruiter/ApplicationsManager';
 import Organizations from '../pages/recruiter/Organizations';
 import CreateOrganization from '../pages/recruiter/CreateOrganization';
+import OwnerPaymentHistory from '../pages/recruiter/OwnerPaymentHistory';
+import ManageRecruiters from '../pages/recruiter/ManageRecruiters';
 
 // Admin pages
 import AdminDashboard from '../pages/admin/AdminDashboard';
@@ -41,6 +44,8 @@ import AdminCompanies from '../pages/admin/AdminCompanies';
 import AdminCompanyDetail from '../pages/admin/AdminCompanyDetail';
 import AdminJobSeekers from '../pages/admin/AdminJobSeekers';
 import AdminJobDetail from '../pages/admin/AdminJobDetail';
+import AdminSubscriptionPlans from '../pages/admin/AdminSubscriptionPlans';
+import AdminPaymentHistory from '../pages/admin/AdminPaymentHistory';
 
 const AppRoutes = () => {
   return (
@@ -60,6 +65,7 @@ const AppRoutes = () => {
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/jobs/:id" element={<JobDetail />} />
         <Route path="/companies" element={<Companies />} />
+        <Route path="/companies/:id" element={<CompanyDetail />} />
         <Route path="/pricing" element={<Pricing />} />
       </Route>
 
@@ -97,6 +103,14 @@ const AppRoutes = () => {
           }
         />
         <Route
+          path="/recruiter/edit-job/:id"
+          element={
+            <ProtectedRoute requiredRole={["recruiter", "owner"]}>
+              <PostJob />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/recruiter/applications/:jobId"
           element={
             <ProtectedRoute requiredRole={["recruiter", "owner"]}>
@@ -125,6 +139,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute requiredRole={["recruiter", "owner"]}>
               <CreateOrganization />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/recruiter/payment-history"
+          element={
+            <ProtectedRoute requiredRole={["owner", "recruiter"]}>
+              <OwnerPaymentHistory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/recruiter/members"
+          element={
+            <ProtectedRoute requiredRole={["owner", "recruiter"]}>
+              <ManageRecruiters />
             </ProtectedRoute>
           }
         />
@@ -167,6 +197,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute requiredRole="admin">
               <AdminJobSeekers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/plans"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminSubscriptionPlans />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/payments"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminPaymentHistory />
             </ProtectedRoute>
           }
         />

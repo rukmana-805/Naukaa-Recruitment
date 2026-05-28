@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import cloudinary from "../config/cloudinary.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -194,18 +195,33 @@ userSchema.methods.getResetPasswordToken = function() {
   return resetToken;
 }
 
-// Castading Handle
-
-// Recruiter delete → jobs delete
-// this.getFilter() -> gives id of the user who is being deleted and this function says that when a
-// user is being deleted, find all the jobs where postedBy is that user's id and delete those jobs as well.
-userSchema.pre("findOneAndDelete", async function () {
-  const user = await this.model.findOne(this.getFilter());
-
+// Cascading Handle Helper
+const handleUserCascadeDelete = async (user) => {
   if (!user) return;
 
-  // delete jobs and their applications if recruiter
+  // 1. Delete user's Cloudinary assets
+  try {
+    if (user.profilePic?.public_id) {
+      await cloudinary.uploader.destroy(user.profilePic.public_id);
+    }
+    if (user.resume?.public_id) {
+      await cloudinary.uploader.destroy(user.resume.public_id);
+    }
+  } catch (err) {
+    console.error("Cloudinary user file destruction failed:", err.message);
+  }
+
+  // 2. Delete all notifications for the user
+  await mongoose.model("Notification").deleteMany({ user: user._id });
+
+  // 3. Cascade delete based on user role
   if (user.role === "recruiter") {
+    // Remove from organization members list
+    await mongoose.model("Organization").updateMany(
+      { "members.user": user._id },
+      { $pull: { members: { user: user._id } } }
+    );
+
     const jobs = await mongoose.model("Job").find({ postedBy: user._id });
     const jobIds = jobs.map(j => j._id);
 
@@ -213,15 +229,60 @@ userSchema.pre("findOneAndDelete", async function () {
     await mongoose.model("Application").deleteMany({ job: { $in: jobIds } });
 
     // Delete the jobs
-    await mongoose.model("Job").deleteMany({
-      postedBy: user._id,
-    });
+    await mongoose.model("Job").deleteMany({ postedBy: user._id });
+  }
+
+  if (user.role === "owner") {
+    const orgs = await mongoose.model("Organization").find({ owner: user._id });
+    for (const org of orgs) {
+      try {
+        if (org.logo?.public_id) {
+          await cloudinary.uploader.destroy(org.logo.public_id);
+        }
+        if (org.coverImage?.public_id) {
+          await cloudinary.uploader.destroy(org.coverImage.public_id);
+        }
+        for (const doc of org.verificationDocuments || []) {
+          if (doc.public_id) {
+            await cloudinary.uploader.destroy(doc.public_id);
+          }
+        }
+      } catch (err) {
+        console.error("Cloudinary org file destruction failed:", err.message);
+      }
+
+      // Delete recruiters of the company
+      const recruiterIds = org.members
+        .filter(m => m.role === "recruiter")
+        .map(m => m.user);
+      for (const recId of recruiterIds) {
+        await mongoose.model("User").findByIdAndDelete(recId);
+      }
+
+      // Delete jobs and applications of the company
+      const jobs = await mongoose.model("Job").find({ company: org._id });
+      const jobIds = jobs.map(j => j._id);
+      await mongoose.model("Application").deleteMany({ job: { $in: jobIds } });
+      await mongoose.model("Job").deleteMany({ company: org._id });
+
+      // Delete the organization
+      await org.deleteOne();
+    }
   }
 
   // delete applications submitted by this job seeker
   await mongoose.model("Application").deleteMany({
     applicant: user._id,
   });
+};
+
+userSchema.pre("deleteOne", { document: true, query: false }, async function () {
+  await handleUserCascadeDelete(this);
+});
+
+userSchema.pre("findOneAndDelete", async function () {
+  const user = await this.model.findOne(this.getFilter());
+  await handleUserCascadeDelete(user);
 });
 
 export default mongoose.model("User", userSchema);

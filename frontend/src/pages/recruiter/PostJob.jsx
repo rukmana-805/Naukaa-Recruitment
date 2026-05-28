@@ -2,7 +2,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { PlusIcon, TrashIcon, ArrowLeftIcon, AlertCircleIcon, XCircleIcon } from 'lucide-react';
 import { jobService } from '../../services/job.service';
 import { EMPLOYMENT_TYPES } from '../../utils/constants';
@@ -32,6 +32,8 @@ const schema = z.object({
 
 const PostJob = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = !!id;
   const [loading, setLoading] = useState(false);
   const [responsibilities, setResponsibilities] = useState(['']);
   const [questions, setQuestions] = useState([]);
@@ -74,6 +76,7 @@ const PostJob = () => {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
@@ -82,6 +85,41 @@ const PostJob = () => {
       experienceRequired: {},
     },
   });
+
+  useEffect(() => {
+    if (isEditMode) {
+      const fetchJob = async () => {
+        try {
+          const res = await jobService.getJobById(id);
+          const jobData = res.data.data;
+          
+          reset({
+            title: jobData.title,
+            description: jobData.description,
+            location: jobData.location || '',
+            employmentType: jobData.employmentType || '',
+            salaryRange: {
+              min: jobData.salaryRange?.min || '',
+              max: jobData.salaryRange?.max || '',
+            },
+            experienceRequired: {
+              min: jobData.experienceRequired?.min || '',
+              max: jobData.experienceRequired?.max || '',
+            },
+            skillsRequired: jobData.skillsRequired ? jobData.skillsRequired.join(', ') : '',
+            expiresAt: jobData.expiresAt ? jobData.expiresAt.split('T')[0] : '',
+          });
+          
+          setResponsibilities(jobData.responsibilities || ['']);
+          setQuestions(jobData.questions || []);
+        } catch (err) {
+          toast.error('Failed to fetch job details for editing');
+          navigate('/recruiter');
+        }
+      };
+      fetchJob();
+    }
+  }, [id, isEditMode, reset, navigate]);
 
   if (checkingOrg) return <PageLoader />;
 
@@ -143,8 +181,13 @@ const PostJob = () => {
         expiresAt: data.expiresAt || undefined,
         questions: questions.filter(q => q.question.trim()),
       };
-      const res = await jobService.createJob(payload);
-      toast.success('Job posted successfully!');
+      if (isEditMode) {
+        await jobService.updateJob(id, payload);
+        toast.success('Job updated successfully!');
+      } else {
+        await jobService.createJob(payload);
+        toast.success('Job posted successfully!');
+      }
       navigate('/recruiter');
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -186,8 +229,8 @@ const PostJob = () => {
           <ArrowLeftIcon className="w-4 h-4" />
           Back
         </button>
-        <h1 className="section-title">Post a New Job</h1>
-        <p className="text-gray-500 mt-1">Fill in the details to attract the right candidates</p>
+        <h1 className="section-title">{isEditMode ? 'Edit Job Details' : 'Post a New Job'}</h1>
+        <p className="text-gray-500 mt-1">{isEditMode ? 'Update the fields to modify the job posting' : 'Fill in the details to attract the right candidates'}</p>
       </motion.div>
 
       <motion.form
@@ -384,10 +427,10 @@ const PostJob = () => {
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Posting...
+                {isEditMode ? 'Saving...' : 'Posting...'}
               </span>
             ) : (
-              'Post Job'
+              isEditMode ? 'Save Changes' : 'Post Job'
             )}
           </motion.button>
         </div>

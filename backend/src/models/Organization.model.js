@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import cloudinary from "../config/cloudinary.js";
 
 const organizationSchema = new mongoose.Schema(
   {
@@ -231,7 +232,6 @@ const organizationSchema = new mongoose.Schema(
     subscription: {
       plan: {
         type: String,
-        enum: ["FREE", "BASIC", "PREMIUM", "ENTERPRISE"],
         default: "FREE",
       },
 
@@ -295,5 +295,50 @@ organizationSchema.methods.removeFollower = function (userId) {
     (id) => id.toString() !== userId.toString(),
   );
 };
+
+// Cascading Handle Helper for Organization
+const handleOrgCascadeDelete = async (org) => {
+  if (!org) return;
+
+  // 1. Delete assets from Cloudinary
+  try {
+    if (org.logo?.public_id) {
+      await cloudinary.uploader.destroy(org.logo.public_id);
+    }
+    if (org.coverImage?.public_id) {
+      await cloudinary.uploader.destroy(org.coverImage.public_id);
+    }
+    for (const doc of org.verificationDocuments || []) {
+      if (doc.public_id) {
+        await cloudinary.uploader.destroy(doc.public_id);
+      }
+    }
+  } catch (err) {
+    console.error("Cloudinary org file destruction failed:", err.message);
+  }
+
+  // 2. Find and delete recruiters of this organization
+  const recruiterIds = org.members
+    .filter(m => m.role === "recruiter")
+    .map(m => m.user);
+  for (const recId of recruiterIds) {
+    await mongoose.model("User").findByIdAndDelete(recId);
+  }
+
+  // 3. Find and delete jobs and their applications
+  const jobs = await mongoose.model("Job").find({ company: org._id });
+  const jobIds = jobs.map(j => j._id);
+  await mongoose.model("Application").deleteMany({ job: { $in: jobIds } });
+  await mongoose.model("Job").deleteMany({ company: org._id });
+};
+
+organizationSchema.pre("deleteOne", { document: true, query: false }, async function () {
+  await handleOrgCascadeDelete(this);
+});
+
+organizationSchema.pre("findOneAndDelete", async function () {
+  const org = await this.model.findOne(this.getFilter());
+  await handleOrgCascadeDelete(org);
+});
 
 export default mongoose.model("Organization", organizationSchema);

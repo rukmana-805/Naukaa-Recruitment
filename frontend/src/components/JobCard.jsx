@@ -56,9 +56,18 @@ const JobCard = ({ job, showApplyButton = true }) => {
           <h3 className="font-semibold text-gray-900 text-base leading-tight truncate">
             {job.title}
           </h3>
-          <p className="text-sm text-gray-500 mt-0.5 truncate">
-            {company?.name || 'Company'}
-          </p>
+          {company?._id ? (
+            <Link 
+              to={`/companies/${company._id}`} 
+              className="text-sm text-gray-500 hover:text-green-600 transition-colors mt-0.5 truncate block"
+            >
+              {company.name}
+            </Link>
+          ) : (
+            <p className="text-sm text-gray-500 mt-0.5 truncate">
+              {company?.name || 'Company'}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-2 shrink-0">

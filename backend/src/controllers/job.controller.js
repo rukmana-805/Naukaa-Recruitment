@@ -41,6 +41,15 @@ const createJob = asyncHandler(async (req, res) => {
     throw new ApiError(403, `Your company verification status is ${company.verificationStatus || 'PENDING'}. You cannot post jobs until it is verified by an admin.`);
   }
 
+  // Plan check: free plan is limited to 1 job posting total
+  const isPaid = company.subscription?.isActive && company.subscription.plan !== "FREE";
+  if (!isPaid) {
+    const totalJobsCount = await Job.countDocuments({ company: company._id });
+    if (totalJobsCount >= 1) {
+      throw new ApiError(403, "Free plan is limited to 1 job posting in total for the organization. Please upgrade your plan to post more jobs.");
+    }
+  }
+
   const job = await Job.create({
     title,
     description,
@@ -83,8 +92,11 @@ const updateJob = asyncHandler(async (req, res) => {
 
   if (!job) throw new ApiError(404, "Job not found");
 
-  // only owner can update
-  if (job.postedBy.toString() !== req.user._id.toString()) {
+  const company = await Organization.findById(job.company);
+  const isCompanyOwner = company && company.owner.toString() === req.user._id.toString();
+
+  // poster or company owner can update
+  if (job.postedBy.toString() !== req.user._id.toString() && !isCompanyOwner) {
     throw new ApiError(403, "Not authorized");
   }
 
@@ -98,7 +110,7 @@ const updateJob = asyncHandler(async (req, res) => {
     "skillsRequired",
     "responsibilities",
     "expiresAt",
-    // questions intentionally excluded - make seperate endpoint for that
+    "questions",
   ];
 
   for (const key of Object.keys(req.body)) {
@@ -112,8 +124,8 @@ const updateJob = asyncHandler(async (req, res) => {
       };
     }
 
-    // Simple arrays → replace
-    else if (key === "skillsRequired" || key === "responsibilities") {
+    // Simple arrays or subdocuments → replace
+    else if (key === "skillsRequired" || key === "responsibilities" || key === "questions") {
       if (!Array.isArray(req.body[key])) {
         throw new ApiError(400, `${key} must be an array`);
       }
@@ -138,7 +150,10 @@ const deleteJob = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Job not found");
   }
 
-  if (job.postedBy.toString() !== req.user._id.toString()) {
+  const company = await Organization.findById(job.company);
+  const isCompanyOwner = company && company.owner.toString() === req.user._id.toString();
+
+  if (job.postedBy.toString() !== req.user._id.toString() && !isCompanyOwner) {
     throw new ApiError(403, "Not authorized");
   }
 
@@ -167,8 +182,15 @@ const getMyJobs = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, [], "No organization found"));
   }
 
-  const jobs = await Job.find({ company: company._id })
+  // Filter: recruiters only see their own postings, owners see all
+  const query = { company: company._id };
+  if (req.user.role === "recruiter") {
+    query.postedBy = req.user._id;
+  }
+
+  const jobs = await Job.find(query)
     .populate("company", "name logo")
+    .populate("postedBy", "fullName email")
     .sort({ createdAt: -1 });
 
   res.status(200).json(new ApiResponse(200, jobs, "Organization jobs fetched"));
@@ -199,6 +221,7 @@ const getFilteredJobs = asyncHandler(async (req, res) => {
     minSalary,
     maxSalary,
     experience,
+    companyId,
     page = 1,
     limit = 10
   } = req.query;
@@ -207,6 +230,10 @@ const getFilteredJobs = asyncHandler(async (req, res) => {
   let query = {
     expiresAt: { $gt: new Date() } // expired jobs remove
   };
+
+  if (companyId) {
+    query.company = companyId;
+  }
 
   // STEP 3: TEXT SEARCH (FAST)
   if (keyword) {
@@ -266,19 +293,20 @@ const getFilteredJobs = asyncHandler(async (req, res) => {
 
   if (keyword) {
     // WITH TEXT SEARCH (score included)
+    const sortCriteria = companyId
+      ? { score: { $meta: "textScore" }, createdAt: -1 }
+      : { score: { $meta: "textScore" }, applicationCount: -1, createdAt: -1 };
+
     jobsQuery = Job.find(query, {
       score: { $meta: "textScore" }
-    }).sort({
-      score: { $meta: "textScore" }, // relevance
-      applicationCount: -1,          // popularity
-      createdAt: -1                  // recency
-    });
+    }).sort(sortCriteria);
   } else {
     // WITHOUT KEYWORD (fallback ranking)
-    jobsQuery = Job.find(query).sort({
-      applicationCount: -1,
-      createdAt: -1
-    });
+    const sortCriteria = companyId
+      ? { createdAt: -1 }
+      : { applicationCount: -1, createdAt: -1 };
+
+    jobsQuery = Job.find(query).sort(sortCriteria);
   }
 
   const jobs = await jobsQuery
